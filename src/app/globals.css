@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+body {
+  font-family: "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
