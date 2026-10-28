@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Icon } from "./icons";
 
-type Section = "home" | "roadmap" | "review";
+type Section = "home" | "roadmap" | "review" | "results" | "admin";
 
 const nav = [
   { href: "/", label: "Обзор", icon: "grid", id: "home" },
   { href: "/roadmap", label: "Карта знаний", icon: "map", id: "roadmap" },
   { href: "/review", label: "Повторение", icon: "layers", id: "review" },
+  { href: "/results", label: "Результаты", icon: "target", id: "results" },
+  { href: "/admin", label: "Админ-панель", icon: "sliders", id: "admin" },
 ] as const;
 
 export function AppShell({ active, children }: { active: Section; children: React.ReactNode }) {
