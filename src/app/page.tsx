@@ -1,25 +1,34 @@
+import Link from "next/link";
+import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icons";
+
+const roadmaps = [
+  { title: "System Design", subtitle: "От основ до распределённых систем", category: "РАЗРАБОТКА", progress: 68, done: "17 из 25 тем", tile: "bg-[#ebe8ff] text-[#675bea]", bar: "bg-[#7166f6]", mark: "S" },
+  { title: "Python Backend", subtitle: "API, базы данных и архитектура", category: "ПРОГРАММИРОВАНИЕ", progress: 42, done: "10 из 24 тем", tile: "bg-[#dff1fa] text-[#438dbb]", bar: "bg-[#5bb1db]", mark: "Py" },
+  { title: "UX Research", subtitle: "Исследования и дизайн решений", category: "ДИЗАЙН", progress: 24, done: "6 из 25 тем", tile: "bg-[#fff0e5] text-[#e79466]", bar: "bg-[#f1a77b]", mark: "Ux" },
+];
+
 export default function Home() {
-  return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-8 px-6 py-16">
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-700">
-        MindLoom
-      </p>
-      <div className="space-y-4">
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-          Изучайте темы как карту знаний
-        </h1>
-        <p className="max-w-2xl text-lg leading-8 text-slate-600">
-          MindLoom поможет увидеть, какие понятия связаны между собой и что
-          изучить сначала. Сейчас здесь подготовлен фундамент приложения на
-          Next.js; генерация карт и остальные функции находятся в разработке.
-        </p>
+  return <AppShell active="home">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8b86a5]">Среда для обучения</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] sm:text-4xl">Всё начинается с любопытства <span className="text-[#7770ed]">✦</span></h1><p className="mt-2 text-sm text-slate-500">Ваши идеи, карты и прогресс — в одной понятной картине.</p></div>
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-medium text-slate-500 shadow-sm"><span className="size-2 rounded-full bg-emerald-400" /> Путь обучения открыт</div>
+    </div>
+
+    <section className="relative overflow-hidden rounded-[26px] bg-[#1d2348] px-7 py-8 text-white shadow-[0_20px_45px_rgba(22,29,69,0.12)] sm:px-10 sm:py-9">
+      <div className="absolute -right-10 -top-28 size-[340px] rounded-full border border-white/10" /><div className="absolute -right-1 -top-15 size-[270px] rounded-full border border-white/10" /><div className="absolute right-8 top-6 size-[180px] rounded-full border border-white/10" />
+      <div className="absolute right-18 top-24 hidden size-2 rounded-full bg-[#f2a882] shadow-[0_0_0_8px_rgba(242,168,130,0.13)] sm:block" /><div className="absolute right-55 top-12 hidden size-2 rounded-full bg-[#a69cff] shadow-[0_0_0_8px_rgba(166,156,255,0.13)] sm:block" />
+      <div className="relative max-w-xl"><span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-[#d5d1ff]"><Icon name="sparkles" size={14} /> ПРОДОЛЖИТЕ СВОЙ ПУТЬ</span><h2 className="mt-5 text-2xl font-semibold tracking-[-0.035em] sm:text-[32px]">Сложные темы становятся яснее, когда видишь связи.</h2><p className="mt-3 max-w-md text-sm leading-6 text-[#bfc5df]">Откройте карту знаний и продолжите с того места, где остановились.</p><Link href="/roadmap" className="mt-6 inline-flex items-center gap-3 rounded-xl bg-[#8178ff] px-5 py-3 text-xs font-semibold text-white shadow-[0_8px_20px_rgba(103,91,235,0.3)] transition-colors hover:bg-[#7166f4]">Открыть карту <Icon name="arrow" size={16} /></Link></div>
+    </section>
+
+    <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="min-w-0 space-y-7">
+        <section><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold tracking-[-0.02em]">Мои карты знаний</h2><p className="mt-1 text-xs text-slate-400">Продолжайте изучать то, что вам интересно</p></div><Link href="/roadmap" className="flex items-center gap-1 text-xs font-semibold text-[#695ff0]">Смотреть карту <Icon name="chevron" size={15} /></Link></div>
+          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{roadmaps.map((item) => <Link key={item.title} href="/roadmap" className="group rounded-2xl border border-slate-200/75 bg-white p-5 shadow-[0_4px_18px_rgba(27,33,71,0.03)] transition-transform hover:-translate-y-1"><div className="flex items-start justify-between"><span className={`flex size-11 items-center justify-center rounded-xl text-sm font-bold ${item.tile}`}>{item.mark}</span><Icon name="more" size={17} className="text-slate-300" /></div><p className="mt-5 text-[10px] font-bold tracking-[0.14em] text-[#8e89b4]">{item.category}</p><h3 className="mt-1 text-[15px] font-bold">{item.title}</h3><p className="mt-1 min-h-9 text-xs leading-5 text-slate-400">{item.subtitle}</p><div className="mt-4 flex items-center justify-between text-[11px]"><span className="text-slate-400">{item.done}</span><span className="font-bold text-slate-700">{item.progress}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${item.bar}`} style={{ width: `${item.progress}%` }} /></div></Link>)}</div>
+        </section>
+        <section className="grid gap-4 md:grid-cols-2"><Link href="/review" className="flex min-h-36 items-center gap-5 rounded-2xl border border-[#e7e4ff] bg-[#f0efff] p-5 transition-colors hover:bg-[#e9e6ff]"><span className="flex size-13 shrink-0 items-center justify-center rounded-2xl bg-white text-[#7166f6]"><Icon name="layers" size={24} /></span><div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#8278df]">Ежедневное повторение</p><h3 className="mt-2 text-base font-bold">Закрепите знания</h3><p className="mt-1 text-xs leading-5 text-slate-500">Сегодня вас ждут 5 коротких вопросов</p></div><Icon name="arrow" size={18} className="ml-auto shrink-0 text-[#7166f6]" /></Link><div className="flex min-h-36 items-center gap-5 rounded-2xl border border-slate-200/75 bg-white p-5"><span className="flex size-13 shrink-0 items-center justify-center rounded-2xl bg-[#e9f8f0] text-[#47b58c]"><Icon name="target" size={24} /></span><div><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#62b99a]">Ваш ритм</p><h3 className="mt-2 text-base font-bold">3 дня подряд</h3><p className="mt-1 text-xs leading-5 text-slate-500">Маленькие шаги дают большой результат</p></div></div></section>
       </div>
-      <div className="flex flex-wrap gap-3 text-sm text-slate-700">
-        <span className="rounded-full bg-slate-100 px-4 py-2">Граф знаний</span>
-        <span className="rounded-full bg-slate-100 px-4 py-2">Прогресс</span>
-        <span className="rounded-full bg-slate-100 px-4 py-2">Повторение</span>
-        <span className="rounded-full bg-slate-100 px-4 py-2">Экспорт</span>
-      </div>
-    </main>
-  );
+      <aside className="space-y-5"><div className="rounded-2xl border border-slate-200/75 bg-white p-5"><div className="flex items-center justify-between"><h2 className="text-sm font-bold">Ваш прогресс</h2><Icon name="more" size={17} className="text-slate-300" /></div><div className="mt-6 flex items-center gap-5"><div className="flex size-23 shrink-0 items-center justify-center rounded-full border-[9px] border-[#766cf4] text-xl font-bold">68%</div><div><p className="text-xs font-semibold">System Design</p><p className="mt-1 text-[11px] leading-5 text-slate-400">17 из 25 тем изучено</p><p className="mt-2 text-[11px] font-semibold text-[#7166f6]">Отличный темп!</p></div></div><div className="mt-6 border-t border-slate-100 pt-5"><div className="flex justify-between text-xs"><span className="text-slate-500">Следующая тема</span><span className="font-semibold">Кэширование</span></div><div className="mt-3 flex items-center gap-2 text-[11px] text-slate-400"><Icon name="clock" size={14} /> ~25 минут на изучение</div></div></div><div className="rounded-2xl border border-slate-200/75 bg-white p-5"><h2 className="text-sm font-bold">Активность за неделю</h2><p className="mt-1 text-[11px] text-slate-400">Каждый день — новая точка на карте</p><div className="mt-6 flex items-end justify-between gap-2">{[42, 68, 49, 82, 56, 96, 70].map((height, index) => <div key={index} className="flex flex-1 flex-col items-center gap-2"><div className={`w-full max-w-5 rounded-t-md ${index === 5 ? "bg-[#7166f6]" : "bg-[#e5e3fb]"}`} style={{ height: `${height}px` }} /><span className="text-[10px] text-slate-400">{["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"][index]}</span></div>)}</div></div></aside>
+    </div>
+  </AppShell>;
 }
