@@ -48,3 +48,12 @@ export function Icon({ name, size = 20, className = "" }: { name: IconName; size
     </svg>
   );
 }
+
+export function PixelMark() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 32 32" className="pixel-mark" fill="currentColor" shapeRendering="crispEdges">
+      <path d="M14 3h4v4h-4zM10 7h4v4h-4zM18 7h4v4h-4zM6 11h4v4H6zM14 11h4v4h-4zM22 11h4v4h-4zM10 15h4v4h-4zM18 15h4v4h-4zM14 19h4v4h-4zM10 23h4v4h-4zM18 23h4v4h-4z" />
+      <path d="M14 7h4v4h-4zM10 19h4v4h-4zM18 19h4v4h-4z" fill="#d7fff8" />
+    </svg>
+  );
+}

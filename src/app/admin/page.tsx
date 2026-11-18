@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { AdminCourseCatalog } from "@/components/admin-course-catalog";
 import { Icon } from "@/components/icons";
 
 const stats = [
   { label: "Пользователи", value: "1 284", change: "+12% за месяц", icon: "grid" as const, tint: "bg-[#eeecff] text-[#7166f6]" },
-  { label: "Карты знаний", value: "3 672", change: "+186 за неделю", icon: "map" as const, tint: "bg-[#e5f3fb] text-[#55a5cf]" },
+  { label: "Сгенерировано карт", value: "3 672", change: "+186 за неделю", icon: "map" as const, tint: "bg-[#e5f3fb] text-[#55a5cf]" },
   { label: "Генерации сегодня", value: "248", change: "234 завершены", icon: "sparkles" as const, tint: "bg-[#e6f7ed] text-[#45ae7e]" },
   { label: "Задачи в очереди", value: "14", change: "Ожидают обработки", icon: "clock" as const, tint: "bg-[#fff2e5] text-[#e89d5e]" },
 ];
@@ -18,9 +19,12 @@ const jobs = [
 
 export default function AdminPage() {
   return <AppShell active="admin">
-    <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#655f83]">Управление платформой</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] sm:text-4xl">Административная панель</h1><p className="mt-2 text-base leading-7 text-slate-600">Пример того, как можно наблюдать за пользователями, генерациями и сервисами.</p></div><span className="rounded-full bg-[#eeecff] px-4 py-2 text-sm font-semibold text-[#7166f6]">UI-прототип · нет подключения к серверу</span></div>
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#655f83]">Управление платформой</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] sm:text-4xl">Административная панель</h1><p className="mt-2 text-base leading-7 text-slate-600">Курсы, пользователи, генерации и состояние сервисов в одном месте.</p></div><span className="rounded-full bg-[#eeecff] px-4 py-2 text-sm font-semibold text-[#7166f6]">UI-прототип · нет подключения к серверу</span></div>
 
     <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">{stats.map((item) => <div key={item.label} className="rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-[0_4px_20px_rgba(29,34,72,0.03)]"><div className="flex items-center justify-between"><span className={`flex size-10 items-center justify-center rounded-xl ${item.tint}`}><Icon name={item.icon} size={20} /></span><Icon name="more" size={17} className="text-slate-300" /></div><p className="mt-6 text-3xl font-bold tracking-[-0.04em]">{item.value}</p><p className="mt-1 text-sm font-semibold text-slate-600">{item.label}</p><p className="mt-3 text-sm text-slate-500">{item.change}</p></div>)}</div>
+
+    <AdminCourseCatalog />
+
 
     <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
       <div className="space-y-5"><section className="rounded-[22px] border border-slate-200/80 bg-white p-6 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-base font-bold">Генерации за неделю</h2><p className="mt-1 text-sm text-slate-500">Объём задач на создание карт знаний</p></div><span className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500">Последние 7 дней</span></div><div className="mt-8 flex h-44 items-end justify-between gap-3 border-b border-slate-100 pb-0">{[45, 58, 49, 76, 64, 91, 72].map((height, index) => <div key={index} className="flex h-full flex-1 flex-col justify-end gap-2"><div className={`w-full rounded-t-lg ${index === 5 ? "bg-[#7166f6]" : "bg-[#e2dfff]"}`} style={{ height: `${height}%` }} /></div>)}</div><div className="mt-3 grid grid-cols-7 text-center text-sm text-slate-500">{["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => <span key={day}>{day}</span>)}</div></section>
