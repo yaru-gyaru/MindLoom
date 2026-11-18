@@ -24,10 +24,10 @@ export function AdminCourseCatalog() {
       <div className="max-h-[530px] space-y-2 overflow-y-auto border-b border-slate-100 p-4 lg:border-b-0 lg:border-r" aria-label="Список курсов">
         {filtered.map((course) => {
           const active = selected?.id === course.id;
-          return <button key={course.id} type="button" onClick={() => setSelectedId(course.id)} aria-pressed={active} className={`w-full rounded-xl border p-4 text-left transition-colors ${active ? "border-[#b9b3ff] bg-[#f7f6ff]" : "border-transparent hover:border-slate-200 hover:bg-slate-50"}`}>
-            <span className="block text-sm font-bold text-slate-800">{course.title}</span>
+          return <button key={course.id} type="button" onClick={() => setSelectedId(course.id)} aria-pressed={active} className={`w-full rounded-xl border p-4 text-left transition-colors ${active ? "border-[#70e6ff] bg-[#17223b]" : "border-transparent hover:border-[#394967] hover:bg-[#17223b]"}`}>
+            <span className="block text-sm font-bold text-[#eef2ff]">{course.title}</span>
             <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.1em] text-[#766cf4]">{course.category}</span>
-            <span className="mt-3 block text-xs text-slate-500">{course.topics.length} тем в программе</span>
+            <span className="mt-3 block text-xs text-slate-400">{course.topics.length} тем в программе</span>
           </button>;
         })}
         {filtered.length === 0 && <p className="px-3 py-8 text-center text-sm text-slate-500">Курсы по запросу не найдены.</p>}
