@@ -35,6 +35,7 @@ const dependencies: [number, number][] = [
 ];
 
 function rowsFor(total: number) {
+  if (total === 14) return [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11], [12, 13]];
   const rows = mapRows.map((row) => row.filter((index) => index < total)).filter((row) => row.length > 0);
   for (let index = 25; index < total; index += 6) rows.push(Array.from({ length: Math.min(6, total - index) }, (_, offset) => index + offset));
   return rows;
@@ -42,6 +43,7 @@ function rowsFor(total: number) {
 
 function edgesFor(total: number, custom: boolean): [number, number][] {
   const rows = rowsFor(total);
+  if (total === 14) return [[0, 1], [0, 2], [2, 3], [3, 4], [3, 5], [5, 6], [6, 7], [6, 8], [8, 9], [9, 10], [9, 11], [11, 12], [12, 13]];
   if (custom) return rows.slice(1).flatMap((row, stage) => row.map((index, place) => [rows[stage][Math.min(rows[stage].length - 1, Math.floor(place * rows[stage].length / row.length))], index] as [number, number]));
   const extra = rows.slice(6).flatMap((row, offset) => row.map((index, place) => [rows[offset + 5][Math.min(rows[offset + 5].length - 1, Math.floor(place * rows[offset + 5].length / row.length))], index] as [number, number]));
   return [...dependencies.filter(([, to]) => to < total), ...extra];

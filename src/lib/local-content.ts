@@ -49,7 +49,13 @@ export function useCourseCatalog(): CourseEntry[] {
     const custom = saved.filter((item) => !(item.id in defaultCourses)).sort((a, b) => b.createdAt - a.createdAt).map((item) => ({ ...item.config, id: item.id, isCustom: true, updatedAt: item.updatedAt }));
     const defaults = Object.entries(defaultCourses).map(([id, config]) => {
       const override = saved.find((item) => item.id === id);
-      return { ...(override?.config ?? config), id, isCustom: false, updatedAt: override?.updatedAt };
+      const isOldSystemCurriculum = id === "system"
+        && override?.config.topics.length === 25
+        && override.config.topics[0]?.title === "Базовые принципы";
+      const migratedSystem = isOldSystemCurriculum
+        ? { ...config, completed: 0 }
+        : undefined;
+      return { ...(migratedSystem ?? override?.config ?? config), id, isCustom: false, updatedAt: override?.updatedAt };
     });
     return [...custom, ...defaults];
   }, [raw]);
