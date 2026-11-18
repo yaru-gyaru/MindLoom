@@ -19,7 +19,7 @@ export default function Home() {
 
     <HomeContentGrid>
       <div className="min-w-0 space-y-7">
-        <section id="my-roadmaps"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold tracking-[-0.02em]">Мои карты знаний</h2><p className="mt-1 text-sm text-slate-500">Продолжайте изучать то, что вам интересно</p></div><Link href="#my-roadmaps" className="flex items-center gap-1 text-sm font-semibold text-[#695ff0]">Все карты <Icon name="chevron" size={15} /></Link></div>
+        <section id="my-roadmaps"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold tracking-[-0.02em]">Продолжить обучение</h2><p className="mt-1 text-sm text-slate-500">Начатые и сохранённые курсы</p></div><Link href="/catalog" className="flex items-center gap-1 text-sm font-semibold text-[#695ff0]">Все курсы <Icon name="chevron" size={15} /></Link></div>
           <HomeCourseCards />
         </section>
         <HomeSiteCards />

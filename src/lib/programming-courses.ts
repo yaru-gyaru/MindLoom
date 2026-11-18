@@ -11,7 +11,7 @@ function topics(seeds: LessonSeed[]): CourseTopic[] {
 export const programmingCourses: Record<"c" | "cpp" | "java" | "javascript", CourseConfig> = {
   c: {
     title: "C",
-    category: "Программирование",
+    category: "Языки программирования",
     description: "Основы языка C, память, указатели и безопасная работа с ресурсами.",
     completed: 0,
     stages: ["Синтаксис и алгоритмы", "Функции и массивы", "Указатели и память", "Файлы и структуры", "Надёжность и проект"],
@@ -41,7 +41,7 @@ export const programmingCourses: Record<"c" | "cpp" | "java" | "javascript", Cou
   },
   cpp: {
     title: "C++",
-    category: "Программирование",
+    category: "Языки программирования",
     description: "От основ C++ к STL, объектам и безопасному управлению ресурсами.",
     completed: 0,
     stages: ["Синтаксис и функции", "STL и алгоритмы", "Объекты и шаблоны", "Владение ресурсами", "Тестирование и проект"],
@@ -71,7 +71,7 @@ export const programmingCourses: Record<"c" | "cpp" | "java" | "javascript", Cou
   },
   java: {
     title: "Java",
-    category: "Программирование",
+    category: "Языки программирования",
     description: "Синтаксис Java, коллекции, объектная модель, исключения и сборка.",
     completed: 0,
     stages: ["Язык и JVM", "Объектная модель", "Коллекции и данные", "Ошибки и тесты", "Сборка и проект"],
@@ -102,7 +102,7 @@ export const programmingCourses: Record<"c" | "cpp" | "java" | "javascript", Cou
   },
   javascript: {
     title: "JavaScript",
-    category: "Веб-разработка",
+    category: "Языки программирования",
     description: "Основы JavaScript, данные, асинхронность и взаимодействие с браузером.",
     completed: 0,
     stages: ["Основы языка", "Функции и коллекции", "Асинхронность", "Браузер и безопасность", "Тесты и проект"],

@@ -97,7 +97,7 @@ function buildTopics(items: [string, string][]): CourseTopic[] {
 export const extraCourses: Record<"python-backend" | "ux-research", CourseConfig> = {
   "python-backend": {
     title: "Python Backend",
-    category: "Программирование",
+    category: "Backend-разработка",
     description: "От языка Python до проектирования и развёртывания backend-сервиса.",
     completed: 10,
     stages: ["Язык Python", "Веб-основы", "Данные", "Процессы и качество", "Надёжность", "Рабочий сервис"],

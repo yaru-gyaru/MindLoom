@@ -17,6 +17,7 @@ export type SiteEntry = {
 
 type SavedCourse = { id: string; config: CourseConfig; createdAt: number; updatedAt: number };
 const coursesKey = "mindloom-local-courses-v1";
+const savedCoursesKey = "mindloom-saved-courses-v1";
 const sitesKey = "mindloom-local-sites-v1";
 const changeEvent = "mindloom-content-change";
 
@@ -52,6 +53,18 @@ export function useCourseCatalog(): CourseEntry[] {
     });
     return [...custom, ...defaults];
   }, [raw]);
+}
+
+export function useSavedCourseIds(): string[] {
+  const raw = useSyncExternalStore(subscribe, () => readRaw(savedCoursesKey), () => "[]");
+  return useMemo(() => parseList<string>(raw).filter((id) => typeof id === "string"), [raw]);
+}
+
+export function toggleSavedCourse(id: string) {
+  const saved = parseList<string>(readRaw(savedCoursesKey));
+  const next = saved.includes(id) ? saved.filter((item) => item !== id) : [id, ...saved];
+  window.localStorage.setItem(savedCoursesKey, JSON.stringify(next));
+  window.dispatchEvent(new Event(changeEvent));
 }
 
 export function saveCourse(id: string, config: CourseConfig) {

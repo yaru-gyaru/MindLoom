@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon, PixelMark } from "./icons";
 
-type Section = "home" | "roadmap" | "review" | "results" | "admin";
+type Section = "home" | "my-courses" | "catalog" | "roadmap" | "review" | "results" | "admin";
 
 const nav = [
   { href: "/", label: "Обзор", icon: "grid", id: "home" },
+  { href: "/my-courses", label: "Мои курсы", icon: "book", id: "my-courses" },
+  { href: "/catalog", label: "Каталог курсов", icon: "layers", id: "catalog" },
   { href: "/roadmap", label: "Карта знаний", icon: "map", id: "roadmap" },
   { href: "/review", label: "Повторение", icon: "layers", id: "review" },
   { href: "/results", label: "Результаты", icon: "target", id: "results" },
@@ -45,7 +47,7 @@ export function useDemoRole(): DemoRole {
 function canViewSection(role: DemoRole, section: Section) {
   if (role === "admin") return true;
   if (section === "admin") return false;
-  return role === "user" || section === "home" || section === "roadmap";
+  return role === "user" || section === "home" || section === "roadmap" || section === "catalog";
 }
 
 export function MemberOnly({ children }: { children: React.ReactNode }) {
