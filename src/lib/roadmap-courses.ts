@@ -6,7 +6,9 @@ import { additionalCourses } from "@/lib/additional-courses";
 
 export type CourseId = "system" | "python-backend" | "ux-research" | "c" | "cpp" | "java" | "javascript" | "frontend" | "devops" | "ui-design" | "sql-analytics";
 
-export type CourseTopic = { title: string; summary: string; minutes: number; lecture?: string; practice?: string; lectureImage?: string; lectureImageAlt?: string; lectureCode?: { language: string; code: string }; codeCell?: { language: "java"; code: string } };
+export type LectureCodeBlock = { language: string; code: string };
+export type LectureBlock = { type: "text"; text: string } | { type: "code"; language: string; code: string } | { type: "runner"; language: "java"; code: string };
+export type CourseTopic = { title: string; summary: string; minutes: number; lecture?: string; lectureBlocks?: LectureBlock[]; practice?: string; lectureImage?: string; lectureImageAlt?: string; lectureCode?: LectureCodeBlock; lectureCodeBlocks?: LectureCodeBlock[]; codeCell?: { language: "java"; code: string } };
 
 export function topicLearningMaterial(topic: Pick<CourseTopic, "title" | "summary" | "lecture" | "practice">, track: CourseTrack = "general") {
   const curated = courseMaterials[track]?.[topic.title];

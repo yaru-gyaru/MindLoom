@@ -5,11 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { useClientReady, useCourseCatalog, saveCourse, type CourseEntry } from "@/lib/local-content";
-import { topicLearningMaterial, type CourseConfig, type CourseTopic } from "@/lib/roadmap-courses";
+import { topicLearningMaterial, type CourseConfig, type CourseTopic, type LectureBlock } from "@/lib/roadmap-courses";
 
 const javaStarter = "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, Java!\");\n    }\n}";
 const courseCategories = ["Разработка", "Языки программирования", "Веб-разработка", "Backend-разработка", "Дизайн", "Работа с данными"];
-const lectureCodeLanguages = ["text", "javascript", "typescript", "python", "java", "c", "cpp", "sql", "html", "css"];
+const lectureCodeLanguages = ["bash", "terminal", "javascript", "typescript", "python", "java", "c", "cpp", "sql", "html", "css"];
+
+function blocksForTopic(topic: CourseTopic, generatedLecture: string): LectureBlock[] {
+  if (topic.lectureBlocks) return topic.lectureBlocks;
+  const blocks: LectureBlock[] = [{ type: "text", text: topic.lecture ?? generatedLecture }];
+  for (const item of topic.lectureCodeBlocks ?? (topic.lectureCode ? [topic.lectureCode] : [])) blocks.push({ type: "code", ...item });
+  if (topic.codeCell) blocks.push({ type: "runner", ...topic.codeCell });
+  return blocks;
+}
 
 function trackForCourse(id?: string) {
   if (id === "system") return "system";
@@ -25,7 +33,10 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
   const [useCustomCategory, setUseCustomCategory] = useState(Boolean(existing?.category && !courseCategories.includes(existing.category)));
   const [description, setDescription] = useState(existing?.description ?? "");
   const [tags, setTags] = useState(existing?.tags.join(", ") ?? "");
-  const [topics, setTopics] = useState<CourseTopic[]>(existing?.topics.map((topic) => ({ ...topic, ...topicLearningMaterial(topic, trackForCourse(existing.id)) })) ?? [{ title: "", summary: "", minutes: 25, lecture: "", practice: "" }]);
+  const [topics, setTopics] = useState<CourseTopic[]>(existing?.topics.map((topic) => {
+    const material = topicLearningMaterial(topic, trackForCourse(existing.id));
+    return { ...topic, ...material, lectureBlocks: blocksForTopic(topic, material.lecture) };
+  }) ?? [{ title: "", summary: "", minutes: 25, lecture: "", practice: "", lectureBlocks: [{ type: "text", text: "" }] }]);
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const [topicToReveal, setTopicToReveal] = useState<number | null>(null);
@@ -39,6 +50,23 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
 
   function updateTopic(index: number, patch: Partial<CourseTopic>) {
     setTopics((current) => current.map((topic, topicIndex) => topicIndex === index ? { ...topic, ...patch } : topic));
+  }
+
+  function updateLectureBlock(index: number, blockIndex: number, block: LectureBlock) {
+    const blocks = [...(topics[index].lectureBlocks ?? [])];
+    blocks[blockIndex] = block;
+    updateTopic(index, { lectureBlocks: blocks });
+  }
+
+  function insertLectureBlock(index: number, afterIndex: number, block: LectureBlock) {
+    const blocks = [...(topics[index].lectureBlocks ?? [])];
+    blocks.splice(afterIndex + 1, 0, block);
+    updateTopic(index, { lectureBlocks: blocks });
+  }
+
+  function removeLectureBlock(index: number, blockIndex: number) {
+    const blocks = (topics[index].lectureBlocks ?? []).filter((_, itemIndex) => itemIndex !== blockIndex);
+    updateTopic(index, { lectureBlocks: blocks.length ? blocks : [{ type: "text", text: "" }] });
   }
 
   function uploadLectureImage(index: number, file?: File) {
@@ -71,15 +99,22 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
       title: topic.title.trim(),
       summary: topic.summary.trim(),
       minutes: Math.max(5, Number(topic.minutes) || 25),
-      lecture: topic.lecture?.trim() ?? "",
+      lecture: topic.lecture?.trim() || undefined,
+      lectureBlocks: topic.lectureBlocks ?? [{ type: "text", text: topic.lecture ?? "" }],
       practice: topic.practice?.trim() ?? "",
       ...(topic.lectureImage?.trim() ? { lectureImage: topic.lectureImage.trim(), lectureImageAlt: topic.lectureImageAlt?.trim() ?? "" } : { lectureImage: undefined, lectureImageAlt: undefined }),
-      ...(topic.lectureCode?.code.trim() ? { lectureCode: { language: topic.lectureCode.language, code: topic.lectureCode.code.trim() } } : { lectureCode: undefined }),
-      ...(topic.codeCell ? { codeCell: { language: "java" as const, code: topic.codeCell.code.trim() || javaStarter } } : {}),
+      lectureCode: undefined,
+      lectureCodeBlocks: undefined,
+      codeCell: undefined,
     }));
     const config: CourseConfig = { title: title.trim(), category: category.trim(), description: description.trim(), tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean), topics: cleanTopics, completed: Math.min(existing?.completed ?? 0, cleanTopics.length - 1), stages: existing?.stages ?? [] };
     const id = existing?.id ?? "course-" + Date.now().toString(36);
-    saveCourse(id, config);
+    try {
+      saveCourse(id, config);
+    } catch {
+      setError("Не удалось сохранить курс в этом браузере. Возможно, закончилось место для сохранённых данных.");
+      return;
+    }
     setError("");
     setSavedMessage("Курс сохранён. Можно продолжить редактирование.");
     if (!existing) router.replace(`/admin/courses/${encodeURIComponent(id)}/edit`);
@@ -87,7 +122,7 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
 
   function addTopic() {
     const newIndex = topics.length;
-    setTopics((current) => [...current, { title: "", summary: "", minutes: 25, lecture: "", practice: "" }]);
+    setTopics((current) => [...current, { title: "", summary: "", minutes: 25, lecture: "", practice: "", lectureBlocks: [{ type: "text", text: "" }] }]);
     setTopicToReveal(newIndex);
     setSavedMessage("");
   }
@@ -116,7 +151,14 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
             <label className="text-xs font-semibold text-slate-600">Минуты<input type="number" min={5} max={240} value={topic.minutes} onChange={(event) => updateTopic(index, { minutes: Number(event.target.value) })} className={topicFieldClass} /></label>
           </div>
           <label className="mt-3 block text-xs font-semibold text-slate-600">Краткое описание<textarea value={topic.summary} onChange={(event) => updateTopic(index, { summary: event.target.value })} rows={2} placeholder="Что узнает пользователь" className={topicFieldClass} /></label>
-          <label className="mt-3 block text-xs font-semibold text-slate-600">Текст лекции<textarea value={topic.lecture ?? ""} onChange={(event) => updateTopic(index, { lecture: event.target.value })} rows={8} placeholder="Объяснение, термины и примеры для урока" className={topicFieldClass + " font-mono"} /></label>
+          <div className="mt-4 space-y-3 rounded-xl border border-slate-200 p-4">
+            <p className="text-xs font-semibold text-slate-600">Содержание лекции <span className="font-normal text-slate-500">— добавляй текст и код в нужном порядке</span></p>
+            {(topic.lectureBlocks ?? [{ type: "text" as const, text: topic.lecture ?? "" }]).map((block, blockIndex) => <div key={blockIndex} className="rounded-xl border border-slate-200 bg-white p-3">
+              <div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-bold text-[#7166f6]">{block.type === "text" ? "Текст лекции" : block.type === "code" ? `Блок кода · ${block.language}` : "Запускаемая ячейка Java"}</p><button type="button" onClick={() => removeLectureBlock(index, blockIndex)} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600">Удалить</button></div>
+              {block.type === "text" ? <textarea value={block.text} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, text: event.target.value })} rows={7} placeholder="Пиши объяснение здесь. После него можно вставить блок кода, а затем добавить следующий текст." className={topicFieldClass + " font-mono"} /> : block.type === "code" ? <><label className="block text-xs font-semibold text-slate-600">Подпись блока<select value={block.language} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, language: event.target.value })} className={topicFieldClass}>{lectureCodeLanguages.map((language) => <option key={language} value={language}>{language === "terminal" ? "Терминал" : language.toUpperCase()}</option>)}</select></label><textarea value={block.code} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, code: event.target.value })} rows={6} spellCheck={false} placeholder="Команда или пример кода" className={topicFieldClass + " font-mono"} /></> : <textarea value={block.code} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, code: event.target.value })} rows={7} spellCheck={false} placeholder="Java-код, который ученик сможет запустить" className={topicFieldClass + " font-mono"} />}
+              <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "text", text: "" })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Текст ниже</button><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "code", language: "bash", code: "" })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Блок кода ниже</button><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "runner", language: "java", code: javaStarter })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Ячейка Java ниже</button></div>
+            </div>)}
+          </div>
           <div className="mt-4 rounded-xl border border-slate-200 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-bold text-slate-700">Изображение в лекции <span className="font-normal text-slate-500">(необязательно)</span></p><p className="mt-1 text-xs font-normal text-slate-500">Добавьте иллюстрацию, схему или скриншот.</p></div>{topic.lectureImage && <button type="button" onClick={() => updateTopic(index, { lectureImage: undefined, lectureImageAlt: undefined })} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600">Убрать изображение</button>}</div>
             <label className="mt-3 block text-xs font-semibold text-slate-600">Ссылка на изображение<input type="url" value={topic.lectureImage?.startsWith("data:") ? "" : topic.lectureImage ?? ""} onChange={(event) => updateTopic(index, { lectureImage: event.target.value || undefined })} placeholder="https://…" className={topicFieldClass} /></label>
@@ -124,12 +166,7 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
             <label className="mt-3 block text-xs font-semibold text-slate-600">Описание изображения<input value={topic.lectureImageAlt ?? ""} onChange={(event) => updateTopic(index, { lectureImageAlt: event.target.value })} placeholder="Что изображено" className={topicFieldClass} /></label>
             {topic.lectureImage && <img src={topic.lectureImage} alt={topic.lectureImageAlt || "Предпросмотр изображения лекции"} className="mt-3 max-h-52 rounded-lg border border-slate-200 object-contain" />}
           </div>
-          {topic.lectureCode ? <div className="mt-4 rounded-xl border border-slate-200 p-4"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold text-slate-700">Пример кода в лекции</p><button type="button" onClick={() => updateTopic(index, { lectureCode: undefined })} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600">Убрать пример</button></div><label className="mt-3 block text-xs font-semibold text-slate-600">Язык<select value={topic.lectureCode.language} onChange={(event) => updateTopic(index, { lectureCode: { ...topic.lectureCode!, language: event.target.value } })} className={topicFieldClass}>{lectureCodeLanguages.map((language) => <option key={language} value={language}>{language === "text" ? "Текст" : language.toUpperCase()}</option>)}</select></label><label className="mt-3 block text-xs font-semibold text-slate-600">Код<textarea value={topic.lectureCode.code} onChange={(event) => updateTopic(index, { lectureCode: { ...topic.lectureCode!, code: event.target.value } })} rows={7} spellCheck={false} className={topicFieldClass + " font-mono"} placeholder="Напишите пример кода" /></label></div> : <button type="button" onClick={() => updateTopic(index, { lectureCode: { language: "javascript", code: "" } })} className="mt-4 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-[#1687a0] hover:bg-[#e9f8fb]">+ Пример кода в лекции</button>}
           <label className="mt-3 block text-xs font-semibold text-slate-600">Практическое задание<textarea value={topic.practice ?? ""} onChange={(event) => updateTopic(index, { practice: event.target.value })} rows={4} placeholder="Задание для самостоятельной работы" className={topicFieldClass} /></label>
-          {topic.codeCell ? <div className="mt-4 rounded-xl border border-[#394967] bg-[#10182c] p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-bold text-white">Ячейка с кодом</p><p className="mt-1 text-xs text-slate-400">Java · ученик сможет изменить код и запустить его в уроке</p></div><button type="button" onClick={() => updateTopic(index, { codeCell: undefined })} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-800">Убрать ячейку</button></div>
-            <textarea aria-label={"Стартовый код Java для темы " + (index + 1)} value={topic.codeCell.code} onChange={(event) => updateTopic(index, { codeCell: { language: "java", code: event.target.value } })} rows={8} spellCheck={false} className="mt-3 w-full resize-y rounded-lg border border-slate-600 bg-[#080d19] p-3 font-mono text-sm leading-6 text-[#d8e7ff] outline-none focus:border-[#70e6ff]" />
-          </div> : <button type="button" onClick={() => updateTopic(index, { codeCell: { language: "java", code: javaStarter } })} className="mt-4 rounded-lg border border-[#394967] px-3 py-2 text-sm font-semibold text-[#1687a0] hover:bg-[#e9f8fb]">+ Ячейка с кодом</button>}
         </div>)}
       </div>
     </section>
