@@ -8,6 +8,8 @@ import { useClientReady, useCourseCatalog, saveCourse, type CourseEntry } from "
 import { topicLearningMaterial, type CourseConfig, type CourseTopic } from "@/lib/roadmap-courses";
 
 const javaStarter = "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, Java!\");\n    }\n}";
+const courseCategories = ["Разработка", "Языки программирования", "Веб-разработка", "Backend-разработка", "Дизайн", "Работа с данными"];
+const lectureCodeLanguages = ["text", "javascript", "typescript", "python", "java", "c", "cpp", "sql", "html", "css"];
 
 function trackForCourse(id?: string) {
   if (id === "system") return "system";
@@ -20,6 +22,7 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
   const router = useRouter();
   const [title, setTitle] = useState(existing?.title ?? "");
   const [category, setCategory] = useState(existing?.category ?? "");
+  const [useCustomCategory, setUseCustomCategory] = useState(Boolean(existing?.category && !courseCategories.includes(existing.category)));
   const [description, setDescription] = useState(existing?.description ?? "");
   const [tags, setTags] = useState(existing?.tags.join(", ") ?? "");
   const [topics, setTopics] = useState<CourseTopic[]>(existing?.topics.map((topic) => ({ ...topic, ...topicLearningMaterial(topic, trackForCourse(existing.id)) })) ?? [{ title: "", summary: "", minutes: 25, lecture: "", practice: "" }]);
@@ -27,6 +30,21 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
 
   function updateTopic(index: number, patch: Partial<CourseTopic>) {
     setTopics((current) => current.map((topic, topicIndex) => topicIndex === index ? { ...topic, ...patch } : topic));
+  }
+
+  function uploadLectureImage(index: number, file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("Выберите файл изображения."); return; }
+    if (file.size > 1_000_000) { setError("Изображение должно быть меньше 1 МБ. Для больших файлов вставьте ссылку на изображение."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        updateTopic(index, { lectureImage: reader.result, lectureImageAlt: file.name.replace(/\.[^.]+$/, "") });
+        setError("");
+      }
+    };
+    reader.onerror = () => setError("Не удалось загрузить изображение.");
+    reader.readAsDataURL(file);
   }
 
   function moveTopic(index: number, step: number) {
@@ -46,6 +64,8 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
       minutes: Math.max(5, Number(topic.minutes) || 25),
       lecture: topic.lecture?.trim() ?? "",
       practice: topic.practice?.trim() ?? "",
+      ...(topic.lectureImage?.trim() ? { lectureImage: topic.lectureImage.trim(), lectureImageAlt: topic.lectureImageAlt?.trim() ?? "" } : { lectureImage: undefined, lectureImageAlt: undefined }),
+      ...(topic.lectureCode?.code.trim() ? { lectureCode: { language: topic.lectureCode.language, code: topic.lectureCode.code.trim() } } : { lectureCode: undefined }),
       ...(topic.codeCell ? { codeCell: { language: "java" as const, code: topic.codeCell.code.trim() || javaStarter } } : {}),
     }));
     const config: CourseConfig = { title: title.trim(), category: category.trim(), description: description.trim(), tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean), topics: cleanTopics, completed: Math.min(existing?.completed ?? 0, cleanTopics.length - 1), stages: existing?.stages ?? [] };
@@ -61,7 +81,7 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
       <h2 className="text-lg font-bold">Информация о курсе</h2>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-semibold text-slate-700">Название<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Например, Frontend Development" className={fieldClass} /></label>
-        <label className="text-sm font-semibold text-slate-700">Категория<input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Разработка" className={fieldClass} /></label>
+        <label className="text-sm font-semibold text-slate-700">Категория курса<select value={useCustomCategory ? "__custom" : category} onChange={(event) => { if (event.target.value === "__custom") { setUseCustomCategory(true); if (courseCategories.includes(category)) setCategory(""); } else { setUseCustomCategory(false); setCategory(event.target.value); } }} className={fieldClass}><option value="">Выберите категорию</option>{courseCategories.map((item) => <option key={item} value={item}>{item}</option>)}<option value="__custom">Своя категория…</option></select>{useCustomCategory && <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Например, Data Engineering" className={fieldClass} />}</label>
       </div>
       <label className="mt-4 block text-sm font-semibold text-slate-700">Описание<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} placeholder="О чём этот курс и чему он учит" className={fieldClass} /></label>
       <label className="mt-4 block text-sm font-semibold text-slate-700">Метки через запятую<input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="API, базы данных, практика" className={fieldClass} /></label>
@@ -78,6 +98,14 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
           </div>
           <label className="mt-3 block text-xs font-semibold text-slate-600">Краткое описание<textarea value={topic.summary} onChange={(event) => updateTopic(index, { summary: event.target.value })} rows={2} placeholder="Что узнает пользователь" className={topicFieldClass} /></label>
           <label className="mt-3 block text-xs font-semibold text-slate-600">Текст лекции<textarea value={topic.lecture ?? ""} onChange={(event) => updateTopic(index, { lecture: event.target.value })} rows={8} placeholder="Объяснение, термины и примеры для урока" className={topicFieldClass + " font-mono"} /></label>
+          <div className="mt-4 rounded-xl border border-slate-200 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-bold text-slate-700">Изображение в лекции <span className="font-normal text-slate-500">(необязательно)</span></p><p className="mt-1 text-xs font-normal text-slate-500">Добавьте иллюстрацию, схему или скриншот.</p></div>{topic.lectureImage && <button type="button" onClick={() => updateTopic(index, { lectureImage: undefined, lectureImageAlt: undefined })} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600">Убрать изображение</button>}</div>
+            <label className="mt-3 block text-xs font-semibold text-slate-600">Ссылка на изображение<input type="url" value={topic.lectureImage?.startsWith("data:") ? "" : topic.lectureImage ?? ""} onChange={(event) => updateTopic(index, { lectureImage: event.target.value || undefined })} placeholder="https://…" className={topicFieldClass} /></label>
+            <label className="mt-3 block text-xs font-semibold text-slate-600">Или загрузить файл<input type="file" accept="image/*" onChange={(event) => uploadLectureImage(index, event.target.files?.[0])} className="mt-2 block w-full text-xs font-normal text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[#e9f8fb] file:px-3 file:py-2 file:font-semibold file:text-[#1687a0]" /></label>
+            <label className="mt-3 block text-xs font-semibold text-slate-600">Описание изображения<input value={topic.lectureImageAlt ?? ""} onChange={(event) => updateTopic(index, { lectureImageAlt: event.target.value })} placeholder="Что изображено" className={topicFieldClass} /></label>
+            {topic.lectureImage && <img src={topic.lectureImage} alt={topic.lectureImageAlt || "Предпросмотр изображения лекции"} className="mt-3 max-h-52 rounded-lg border border-slate-200 object-contain" />}
+          </div>
+          {topic.lectureCode ? <div className="mt-4 rounded-xl border border-slate-200 p-4"><div className="flex items-center justify-between gap-2"><p className="text-sm font-bold text-slate-700">Пример кода в лекции</p><button type="button" onClick={() => updateTopic(index, { lectureCode: undefined })} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600">Убрать пример</button></div><label className="mt-3 block text-xs font-semibold text-slate-600">Язык<select value={topic.lectureCode.language} onChange={(event) => updateTopic(index, { lectureCode: { ...topic.lectureCode!, language: event.target.value } })} className={topicFieldClass}>{lectureCodeLanguages.map((language) => <option key={language} value={language}>{language === "text" ? "Текст" : language.toUpperCase()}</option>)}</select></label><label className="mt-3 block text-xs font-semibold text-slate-600">Код<textarea value={topic.lectureCode.code} onChange={(event) => updateTopic(index, { lectureCode: { ...topic.lectureCode!, code: event.target.value } })} rows={7} spellCheck={false} className={topicFieldClass + " font-mono"} placeholder="Напишите пример кода" /></label></div> : <button type="button" onClick={() => updateTopic(index, { lectureCode: { language: "javascript", code: "" } })} className="mt-4 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-[#1687a0] hover:bg-[#e9f8fb]">+ Пример кода в лекции</button>}
           <label className="mt-3 block text-xs font-semibold text-slate-600">Практическое задание<textarea value={topic.practice ?? ""} onChange={(event) => updateTopic(index, { practice: event.target.value })} rows={4} placeholder="Задание для самостоятельной работы" className={topicFieldClass} /></label>
           {topic.codeCell ? <div className="mt-4 rounded-xl border border-[#394967] bg-[#10182c] p-4">
             <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-bold text-white">Ячейка с кодом</p><p className="mt-1 text-xs text-slate-400">Java · ученик сможет изменить код и запустить его в уроке</p></div><button type="button" onClick={() => updateTopic(index, { codeCell: undefined })} className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-800">Убрать ячейку</button></div>
