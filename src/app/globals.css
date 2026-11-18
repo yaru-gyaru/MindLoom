@@ -10,6 +10,11 @@
   --cyan: #70e6ff;
   --violet: #a99aff;
   --pink: #ff8bd5;
+  --ambient-background:
+    linear-gradient(180deg, rgba(7, 11, 25, 0.58), rgba(7, 11, 25, 0.72)),
+    radial-gradient(ellipse at 14% 18%, rgba(32, 159, 176, 0.13), transparent 38%),
+    radial-gradient(ellipse at 87% 12%, rgba(121, 76, 184, 0.14), transparent 35%),
+    url("/images/pixel-code-lab-background.jpg");
 }
 
 * {
@@ -19,11 +24,11 @@
 body {
   min-height: 100vh;
   background-color: var(--space);
-  background-image:
-    linear-gradient(rgba(91, 135, 207, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(91, 135, 207, 0.055) 1px, transparent 1px),
-    radial-gradient(ellipse at 50% -24%, rgba(42, 74, 138, 0.24), transparent 62%);
-  background-size: 32px 32px, 32px 32px, auto;
+  background-image: var(--ambient-background);
+  background-size: 100% 100%, 100% 100%, 100% 100%, cover;
+  background-position: center, center, center, center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--ink);
   font-family: "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
   line-height: 1.6;
@@ -633,9 +638,11 @@ body {
 
 .learn-page {
   background-color: var(--space) !important;
-  background-image:
-    linear-gradient(rgba(91, 135, 207, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(91, 135, 207, 0.055) 1px, transparent 1px) !important;
+  background-image: var(--ambient-background) !important;
+  background-size: 100% 100%, 100% 100%, 100% 100%, cover !important;
+  background-position: center, center, center, center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed;
   color: #e5edff !important;
 }
 
