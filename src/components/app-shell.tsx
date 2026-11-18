@@ -69,7 +69,9 @@ export function AppShell({ active, children }: { active: Section; children: Reac
   const role = useDemoRole();
   const [accountOpen, setAccountOpen] = useState(false);
   const account = accounts.find((item) => item.id === role) ?? accounts[0];
-  const visibleNav = nav.filter((item) => canViewSection(role, item.id));
+  const visibleNav = role === "admin"
+    ? nav.filter((item) => item.id === "admin")
+    : nav.filter((item) => canViewSection(role, item.id));
 
   function selectAccount(nextRole: DemoRole) {
     window.localStorage.setItem(roleStorageKey, nextRole);

@@ -935,6 +935,18 @@ body {
 .learn-page nav a[aria-current="page"] { border: 1px solid #52658b; background-color: #28305b !important; color: #e3dcff !important; }
 .learn-page nav a[aria-current="page"] span:first-child { background-color: #17223b !important; color: #b8adff !important; }
 
+/* Keep the course navigation in its own visible row at every desktop width. */
+.site-mobile-nav {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 25 !important;
+  display: flex !important;
+  width: 100%;
+  min-height: 52px;
+  overflow-x: auto;
+  background-color: #080d1d !important;
+}
+
 
 .home-hero h2 {
   font-family: "Segoe UI Variable", "Segoe UI", Arial, sans-serif !important;
