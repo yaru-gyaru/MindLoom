@@ -17,7 +17,8 @@ type IconName =
   | "lock"
   | "info"
   | "download"
-  | "sliders";
+  | "sliders"
+  | "copy";
 
 const shapes: Record<IconName, React.ReactNode> = {
   grid: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
@@ -39,6 +40,7 @@ const shapes: Record<IconName, React.ReactNode> = {
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5m0-8h.01" /></>,
   download: <><path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4" /></>,
   sliders: <><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="2" fill="currentColor" stroke="none" /><circle cx="16" cy="17" r="2" fill="currentColor" stroke="none" /></>,
+  copy: <><rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h2" /></>,
 };
 
 export function Icon({ name, size = 20, className = "" }: { name: IconName; size?: number; className?: string }) {

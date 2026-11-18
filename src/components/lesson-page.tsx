@@ -19,6 +19,34 @@ function LessonContent({ content }: { content: string }) {
   })}</div>;
 }
 
+function highlightCode(code: string, language: string) {
+  const keywords = new Set((language === "python"
+    ? "and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield match case"
+    : language === "sql"
+      ? "select from where insert into values update set delete create table index join inner left right on as group by order having limit offset distinct primary key foreign references not null default count sum avg"
+      : "abstract arguments as async await break case catch class const continue debugger default delete do else enum export extends false final finally for from function get if implements import in instanceof interface let new null package private protected public raise return set static super switch this throw throws true try typeof undefined var void while with yield")
+    .toLowerCase().split(/\s+/));
+  const literals = new Set(["true", "false", "none", "null", "undefined", "nan", "self", "this"]);
+  const builtins = new Set("print len range str int float list dict set tuple bool open input type super isinstance enumerate zip map filter sorted sum min max abs round any all".split(" "));
+  const bashKeywords = new Set("if then else elif fi for do done case esac in function export local return exit echo cd source sudo apt npm npx pip python python3 uvicorn".split(" "));
+  const tokens = code.match(/(?:#.*|\/\/.*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|@[\w.]+|\b\d+(?:\.\d+)?\b|[A-Za-z_$][\w$]*|\s+|.)/g) ?? [];
+  return tokens.map((token, index) => {
+    let color = "";
+    const lower = token.toLowerCase();
+    if (/^(#|\/\/|\/\*)/.test(token)) color = "text-[#718096] italic";
+    else if (/^(\"|'|`)/.test(token)) color = "text-[#a8d88d]";
+    else if (/^\d/.test(token)) color = "text-[#f2a77b]";
+    else if (token.startsWith("@")) color = "text-[#e4a8ff]";
+    else if (/^[A-Za-z_$]/.test(token)) {
+      if (keywords.has(lower) || ((language === "bash" || language === "terminal") && bashKeywords.has(lower))) color = "text-[#c792ea]";
+      else if (literals.has(lower)) color = "text-[#ff9e80]";
+      else if (builtins.has(lower) || tokens.slice(index + 1).join("").match(/^\s*\(/)) color = "text-[#82aaff]";
+      else if (/^[A-Z]/.test(token)) color = "text-[#ffcb6b]";
+    } else if (/^[=+\-*%<>!&|^~?:]+$/.test(token)) color = "text-[#89ddff]";
+    return color ? <span key={index} className={color}>{token}</span> : token;
+  });
+}
+
 function LectureCodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
   async function copyCode() {
@@ -31,7 +59,7 @@ function LectureCodeBlock({ language, code }: { language: string; code: string }
     }
   }
   const label = language === "terminal" ? "Терминал" : language.toUpperCase();
-  return <div className="mt-6 overflow-hidden rounded-2xl border border-[#394967] bg-[#080d19]"><div className="flex items-center justify-between border-b border-[#394967] px-4 py-3"><span className="font-semibold text-[#d8e7ff]">{label}</span><button type="button" onClick={copyCode} className="rounded-lg border border-[#394967] px-3 py-1.5 text-xs font-semibold text-[#9feaff] hover:bg-[#17223b]">{copied ? "Скопировано" : "Копировать"}</button></div><pre className="overflow-x-auto p-4 font-mono text-sm leading-6 text-[#d8e7ff]"><code>{code}</code></pre></div>;
+  return <div className="mt-6 overflow-hidden rounded-2xl border border-[#394967] bg-[#080d19]"><div className="flex items-center justify-between border-b border-[#394967] px-4 py-3"><span className="font-semibold text-[#d8e7ff]">{label}</span><button type="button" onClick={copyCode} title={copied ? "Скопировано" : "Копировать код"} aria-label={copied ? "Код скопирован" : "Копировать код"} className="flex size-9 items-center justify-center rounded-lg border border-[#394967] text-[#9feaff] transition hover:bg-[#17223b]">{copied ? <Icon name="check" size={18} /> : <Icon name="copy" size={18} />}</button></div><pre className="overflow-x-auto p-4 font-mono text-sm leading-6 text-[#d8e7ff]"><code>{highlightCode(code, language)}</code></pre></div>;
 }
 
 export function LessonPage({ courseId, topicNumber }: { courseId: string; topicNumber: number }) {
@@ -87,7 +115,7 @@ export function LessonPage({ courseId, topicNumber }: { courseId: string; topicN
 
     <div className="mx-auto grid max-w-[1600px] gap-6 px-4 py-6 sm:px-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:py-9">
       <section className="min-w-0">
-        <div className="mb-5 rounded-[22px] border-2 border-[#493950] bg-[#fff] p-6 shadow-[5px_5px_0_#493950] sm:p-8"><div className="flex flex-wrap items-center gap-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#866c8a]"><span className="rounded-full bg-[#28305b] px-3 py-1.5 text-[#7053a0]">{courseId === "system" ? `Модуль ${moduleNumber}` : `Уровень ${Math.floor(topicIndex / 5) + 1}`}</span><span>Миссия {String(topicNumber).padStart(2, "0")}</span><span className="ml-auto rounded-full bg-[#3b3023] px-3 py-1.5 text-[#936126]">{topic.minutes} минут</span></div><h1 className="mt-4 text-3xl font-extrabold tracking-[-0.04em] sm:text-5xl">{topic.title}</h1><p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{topic.summary}</p><div className="mt-6 flex items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[#344360]"><div className="h-full rounded-full bg-[#9b76d1]" style={{ width: `${Math.round((topicNumber / course.topics.length) * 100)}%` }} /></div><span className="text-xs font-extrabold text-[#72577c]">{topicNumber}/{course.topics.length}</span></div></div>
+        <div className="mb-5 rounded-[22px] border-2 border-[#493950] bg-[#fff] p-6 shadow-[5px_5px_0_#493950] sm:p-8"><div className="flex flex-wrap items-center gap-2 text-xs font-extrabold uppercase tracking-[0.14em] text-[#866c8a]"><span className="rounded-full bg-[#28305b] px-3 py-1.5 text-[#7053a0]">{courseId === "system" ? `Модуль ${moduleNumber}` : `Уровень ${Math.floor(topicIndex / 5) + 1}`}</span><span>Миссия {String(topicNumber).padStart(2, "0")}</span></div><h1 className="mt-4 text-3xl font-extrabold tracking-[-0.04em] sm:text-5xl">{topic.title}</h1><p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{topic.summary}</p><div className="mt-6 flex items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-[#344360]"><div className="h-full rounded-full bg-[#9b76d1]" style={{ width: `${Math.round((topicNumber / course.topics.length) * 100)}%` }} /></div><span className="text-xs font-extrabold text-[#72577c]">{topicNumber}/{course.topics.length}</span></div></div>
 
         {locked ? <div className="rounded-[22px] border-2 border-[#493950] bg-[#10182c] p-8 shadow-[5px_5px_0_#493950]"><h2 className="text-xl font-bold">Откройте предыдущую миссию</h2><p className="mt-2 text-sm leading-6 text-slate-500">Эта тема станет доступна после завершения предыдущей.</p><Link href={courseHref(courseId)} className="mt-5 inline-flex rounded-xl bg-[#7253a1] px-5 py-3 text-sm font-bold text-white">Вернуться к карте</Link></div> : <>
           <article id="lesson" className="scroll-mt-24 rounded-[22px] border-2 border-[#493950] bg-[#10182c] p-6 shadow-[5px_5px_0_#493950] sm:p-8"><div className="mb-6 flex items-center gap-3"><span className="flex size-11 items-center justify-center rounded-xl bg-[#28305b] text-[#b8adff]"><Icon name="layers" size={21} /></span><div><p className="text-xs font-extrabold uppercase tracking-[0.15em] text-[#856c91]">Изучаем</p><h2 className="mt-0.5 text-xl font-extrabold">Лекция</h2></div></div>{lectureBlocks.map((block, index) => block.type === "text" ? <LessonContent key={`text-${index}`} content={block.text} /> : block.type === "code" ? block.code.trim() ? <LectureCodeBlock key={`code-${index}`} language={block.language} code={block.code} /> : null : <div key={`runner-${index}`}><JavaCodeCell courseId={courseId} topicNumber={topicNumber} cellId={`${topicNumber}-${index}`} starterCode={block.code} /></div>)}{topic.lectureImage && <figure className="mt-6"><img src={topic.lectureImage} alt={topic.lectureImageAlt || topic.title} className="max-h-[560px] w-full rounded-xl border border-[#394967] object-contain" />{topic.lectureImageAlt && <figcaption className="mt-2 text-sm text-slate-400">{topic.lectureImageAlt}</figcaption>}</figure>}</article>
