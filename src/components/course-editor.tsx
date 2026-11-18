@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -27,6 +27,15 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
   const [tags, setTags] = useState(existing?.tags.join(", ") ?? "");
   const [topics, setTopics] = useState<CourseTopic[]>(existing?.topics.map((topic) => ({ ...topic, ...topicLearningMaterial(topic, trackForCourse(existing.id)) })) ?? [{ title: "", summary: "", minutes: 25, lecture: "", practice: "" }]);
   const [error, setError] = useState("");
+  const [savedMessage, setSavedMessage] = useState("");
+  const [topicToReveal, setTopicToReveal] = useState<number | null>(null);
+  const topicRefs = useRef<Array<HTMLDivElement | null>>([]);
+
+  useEffect(() => {
+    if (topicToReveal === null) return;
+    topicRefs.current[topicToReveal]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTopicToReveal(null);
+  }, [topicToReveal, topics.length]);
 
   function updateTopic(index: number, patch: Partial<CourseTopic>) {
     setTopics((current) => current.map((topic, topicIndex) => topicIndex === index ? { ...topic, ...patch } : topic));
@@ -69,8 +78,18 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
       ...(topic.codeCell ? { codeCell: { language: "java" as const, code: topic.codeCell.code.trim() || javaStarter } } : {}),
     }));
     const config: CourseConfig = { title: title.trim(), category: category.trim(), description: description.trim(), tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean), topics: cleanTopics, completed: Math.min(existing?.completed ?? 0, cleanTopics.length - 1), stages: existing?.stages ?? [] };
-    saveCourse(existing?.id ?? "course-" + Date.now().toString(36), config);
-    router.push("/admin");
+    const id = existing?.id ?? "course-" + Date.now().toString(36);
+    saveCourse(id, config);
+    setError("");
+    setSavedMessage("Курс сохранён. Можно продолжить редактирование.");
+    if (!existing) router.replace(`/admin/courses/${encodeURIComponent(id)}/edit`);
+  }
+
+  function addTopic() {
+    const newIndex = topics.length;
+    setTopics((current) => [...current, { title: "", summary: "", minutes: 25, lecture: "", practice: "" }]);
+    setTopicToReveal(newIndex);
+    setSavedMessage("");
   }
 
   const fieldClass = "mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#7166f6]";
@@ -88,9 +107,9 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
     </section>
 
     <section className="rounded-[22px] border border-slate-200 bg-white p-5 sm:p-7">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Темы курса</h2><p className="mt-1 text-sm text-slate-500">Здесь редактируются лекция, практика и пример кода каждой темы.</p></div><button type="button" onClick={() => setTopics((current) => [...current, { title: "", summary: "", minutes: 25, lecture: "", practice: "" }])} className="rounded-xl border border-[#dedaff] px-4 py-2 text-sm font-semibold text-[#665be8] hover:bg-[#f5f3ff]">+ Добавить тему</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Темы курса</h2><p className="mt-1 text-sm text-slate-500">Здесь редактируются лекция, практика и пример кода каждой темы.</p></div><button type="button" onClick={addTopic} className="rounded-xl border border-[#dedaff] px-4 py-2 text-sm font-semibold text-[#665be8] hover:bg-[#f5f3ff]">+ Добавить тему</button></div>
       <div className="mt-5 space-y-4">
-        {topics.map((topic, index) => <div key={index} className="rounded-2xl border border-slate-200 bg-[#fafbfe] p-4 sm:p-5">
+        {topics.map((topic, index) => <div key={index} ref={(element) => { topicRefs.current[index] = element; }} className="scroll-mt-24 rounded-2xl border border-slate-200 bg-[#fafbfe] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold text-[#7166f6]">Тема {String(index + 1).padStart(2, "0")}</span><div className="flex gap-1"><button type="button" onClick={() => moveTopic(index, -1)} disabled={index === 0} aria-label={"Переместить тему " + (index + 1) + " выше"} className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-white disabled:opacity-35">↑</button><button type="button" onClick={() => moveTopic(index, 1)} disabled={index === topics.length - 1} aria-label={"Переместить тему " + (index + 1) + " ниже"} className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-white disabled:opacity-35">↓</button><button type="button" onClick={() => setTopics((current) => current.filter((_, topicIndex) => topicIndex !== index))} disabled={topics.length === 1} className="rounded-lg px-2 py-1 text-sm text-rose-600 hover:bg-rose-50 disabled:opacity-35">Удалить тему</button></div></div>
           <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
             <label className="text-xs font-semibold text-slate-600">Название<input value={topic.title} onChange={(event) => updateTopic(index, { title: event.target.value })} placeholder="Название темы" className={topicFieldClass} /></label>
@@ -115,7 +134,7 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
       </div>
     </section>
 
-    {error && <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
+    {error && <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}{savedMessage && <p role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{savedMessage}</p>}
     <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500">Новый курс появится первым в списке. Изменения сохраняются в этом браузере.</p><div className="flex gap-2"><Link href="/admin" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Отмена</Link><button type="submit" className="rounded-xl bg-[#7166f6] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#6257e6]">Сохранить курс</button></div></div>
   </form>;
 }
