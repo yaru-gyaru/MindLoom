@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { Icon } from "@/components/icons";
 import { useClientReady, useCourseCatalog, saveCourse, type CourseEntry } from "@/lib/local-content";
 import { topicLearningMaterial, type CourseConfig, type CourseTopic, type LectureBlock } from "@/lib/roadmap-courses";
 
@@ -17,6 +18,16 @@ function blocksForTopic(topic: CourseTopic, generatedLecture: string): LectureBl
   for (const item of topic.lectureCodeBlocks ?? (topic.lectureCode ? [topic.lectureCode] : [])) blocks.push({ type: "code", ...item });
   if (topic.codeCell) blocks.push({ type: "runner", ...topic.codeCell });
   return blocks;
+}
+
+function preferredCodeLanguage(topics?: CourseTopic[]) {
+  for (const topic of topics ?? []) {
+    const block = topic.lectureBlocks?.find((item) => item.type === "code");
+    if (block) return block.language;
+    if (topic.lectureCodeBlocks?.[0]) return topic.lectureCodeBlocks[0].language;
+    if (topic.lectureCode) return topic.lectureCode.language;
+  }
+  return "bash";
 }
 
 function trackForCourse(id?: string) {
@@ -37,6 +48,8 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
     const material = topicLearningMaterial(topic, trackForCourse(existing.id));
     return { ...topic, ...material, lectureBlocks: blocksForTopic(topic, material.lecture) };
   }) ?? [{ title: "", summary: "", minutes: 25, lecture: "", practice: "", lectureBlocks: [{ type: "text", text: "" }] }]);
+  const [newCodeLanguage, setNewCodeLanguage] = useState(() => preferredCodeLanguage(existing?.topics));
+  const [expandedTopicIndex, setExpandedTopicIndex] = useState<number | null>(0);
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const [topicToReveal, setTopicToReveal] = useState<number | null>(null);
@@ -84,10 +97,9 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
     reader.readAsDataURL(file);
   }
 
-  function moveTopic(index: number, step: number) {
-    const target = index + step;
-    if (target < 0 || target >= topics.length) return;
-    setTopics((current) => { const next = [...current]; [next[index], next[target]] = [next[target], next[index]]; return next; });
+  function deleteTopic(index: number) {
+    setTopics((current) => current.filter((_, topicIndex) => topicIndex !== index));
+    setExpandedTopicIndex((current) => current === null ? null : current === index ? Math.max(0, Math.min(index, topics.length - 2)) : current > index ? current - 1 : current);
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -123,6 +135,7 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
   function addTopic() {
     const newIndex = topics.length;
     setTopics((current) => [...current, { title: "", summary: "", minutes: 25, lecture: "", practice: "", lectureBlocks: [{ type: "text", text: "" }] }]);
+    setExpandedTopicIndex(newIndex);
     setTopicToReveal(newIndex);
     setSavedMessage("");
   }
@@ -142,18 +155,19 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
     </section>
 
     <section className="rounded-[22px] border border-slate-200 bg-white p-5 sm:p-7">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Темы курса</h2><p className="mt-1 text-sm text-slate-500">Здесь редактируются лекция, практика и пример кода каждой темы.</p></div><button type="button" onClick={addTopic} className="rounded-xl border border-[#dedaff] px-4 py-2 text-sm font-semibold text-[#665be8] hover:bg-[#f5f3ff]">+ Добавить тему</button></div>
+      <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Темы курса</h2><p className="mt-1 text-sm text-slate-500">Сворачивай темы для удобной навигации и редактируй их по одной.</p></div><button type="button" onClick={addTopic} aria-label="Добавить тему" title="Добавить тему" className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[#4d5d7c] bg-[#10182c] text-2xl font-medium leading-none text-[#70e6ff] shadow-[3px_3px_0_#030611] transition hover:bg-[#17223b]">+</button></div>
       <div className="mt-5 space-y-4">
-        {topics.map((topic, index) => <div key={index} ref={(element) => { topicRefs.current[index] = element; }} className="scroll-mt-24 rounded-2xl border border-slate-200 bg-[#fafbfe] p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-sm font-bold text-[#7166f6]">Тема {String(index + 1).padStart(2, "0")}</span><div className="flex gap-1"><button type="button" onClick={() => moveTopic(index, -1)} disabled={index === 0} aria-label={"Переместить тему " + (index + 1) + " выше"} className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-white disabled:opacity-35">↑</button><button type="button" onClick={() => moveTopic(index, 1)} disabled={index === topics.length - 1} aria-label={"Переместить тему " + (index + 1) + " ниже"} className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-white disabled:opacity-35">↓</button><button type="button" onClick={() => setTopics((current) => current.filter((_, topicIndex) => topicIndex !== index))} disabled={topics.length === 1} className="rounded-lg px-2 py-1 text-sm text-rose-600 hover:bg-rose-50 disabled:opacity-35">Удалить тему</button></div></div>
+        {topics.map((topic, index) => <div key={index} ref={(element) => { topicRefs.current[index] = element; }} className="scroll-mt-24 rounded-2xl border border-[#354765] bg-[#10182c] p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2"><button type="button" aria-expanded={expandedTopicIndex === index} aria-label={expandedTopicIndex === index ? "Свернуть тему" : "Развернуть тему"} onClick={() => setExpandedTopicIndex((current) => current === index ? null : index)} className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-[#17223b]"><span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#40516f] bg-[#17223b] text-[#70e6ff]"><Icon name="chevron" size={19} className={expandedTopicIndex === index ? "rotate-90" : ""} /></span><span className="min-w-0"><span className="block text-xs font-bold text-[#70e6ff]">Тема {String(index + 1).padStart(2, "0")}</span><span className="block truncate font-semibold text-[#e5eaff]">{topic.title || "Новая тема"}</span>{expandedTopicIndex !== index && topic.summary && <span className="mt-1 block truncate text-xs font-normal text-[#9aabc3]">{topic.summary}</span>}</span></button><button type="button" onClick={() => deleteTopic(index)} disabled={topics.length === 1} className="rounded-lg border border-[#754454] px-3 py-2 text-sm font-semibold text-[#ff9ba8] hover:bg-[#2c1b2b] disabled:opacity-35">Удалить</button></div>
+          {expandedTopicIndex === index && <>
           <label className="mt-3 block text-xs font-semibold text-slate-600">Название<input value={topic.title} onChange={(event) => updateTopic(index, { title: event.target.value })} placeholder="Название темы" className={topicFieldClass} /></label>
           <label className="mt-3 block text-xs font-semibold text-slate-600">Краткое описание<textarea value={topic.summary} onChange={(event) => updateTopic(index, { summary: event.target.value })} rows={2} placeholder="Что узнает пользователь" className={topicFieldClass} /></label>
           <div className="mt-4 space-y-3 rounded-xl border border-slate-200 p-4">
             <p className="text-xs font-semibold text-slate-600">Содержание лекции <span className="font-normal text-slate-500">— добавляй текст и код в нужном порядке</span></p>
             {(topic.lectureBlocks ?? [{ type: "text" as const, text: topic.lecture ?? "" }]).map((block, blockIndex) => <div key={blockIndex} className="rounded-xl border border-slate-200 bg-white p-3">
               <div className="mb-2 flex items-center justify-between gap-2"><p className="text-xs font-bold text-[#7166f6]">{block.type === "text" ? "Текст лекции" : block.type === "code" ? `Блок кода · ${block.language}` : "Запускаемая ячейка Java"}</p><button type="button" onClick={() => removeLectureBlock(index, blockIndex)} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600">Удалить</button></div>
-              {block.type === "text" ? <textarea value={block.text} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, text: event.target.value })} rows={7} placeholder="Пиши объяснение здесь. После него можно вставить блок кода, а затем добавить следующий текст." className={topicFieldClass + " font-mono"} /> : block.type === "code" ? <><label className="block text-xs font-semibold text-slate-600">Подпись блока<select value={block.language} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, language: event.target.value })} className={topicFieldClass}>{lectureCodeLanguages.map((language) => <option key={language} value={language}>{language === "terminal" ? "Терминал" : language.toUpperCase()}</option>)}</select></label><textarea value={block.code} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, code: event.target.value })} rows={6} spellCheck={false} placeholder="Команда или пример кода" className={topicFieldClass + " font-mono"} /></> : <textarea value={block.code} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, code: event.target.value })} rows={7} spellCheck={false} placeholder="Java-код, который ученик сможет запустить" className={topicFieldClass + " font-mono"} />}
-              <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "text", text: "" })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Текст ниже</button><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "code", language: "bash", code: "" })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Блок кода ниже</button><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "runner", language: "java", code: javaStarter })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Ячейка Java ниже</button></div>
+              {block.type === "text" ? <textarea value={block.text} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, text: event.target.value })} rows={7} placeholder="Пиши объяснение здесь. После него можно вставить блок кода, а затем добавить следующий текст." className={topicFieldClass + " font-mono"} /> : block.type === "code" ? <><label className="block text-xs font-semibold text-slate-600">Подпись блока<select value={block.language} onChange={(event) => { setNewCodeLanguage(event.target.value); updateLectureBlock(index, blockIndex, { ...block, language: event.target.value }); }} className={topicFieldClass}>{lectureCodeLanguages.map((language) => <option key={language} value={language}>{language === "terminal" ? "Терминал" : language.toUpperCase()}</option>)}</select></label><textarea value={block.code} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, code: event.target.value })} rows={6} spellCheck={false} placeholder="Команда или пример кода" className={topicFieldClass + " font-mono"} /></> : <textarea value={block.code} onChange={(event) => updateLectureBlock(index, blockIndex, { ...block, code: event.target.value })} rows={7} spellCheck={false} placeholder="Java-код, который ученик сможет запустить" className={topicFieldClass + " font-mono"} />}
+              <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "text", text: "" })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Текст ниже</button><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "code", language: newCodeLanguage, code: "" })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Блок кода ниже</button><button type="button" onClick={() => insertLectureBlock(index, blockIndex, { type: "runner", language: "java", code: javaStarter })} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-[#1687a0]">+ Ячейка Java ниже</button></div>
             </div>)}
           </div>
           <div className="mt-4 rounded-xl border border-slate-200 p-4">
@@ -164,6 +178,7 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
             {topic.lectureImage && <img src={topic.lectureImage} alt={topic.lectureImageAlt || "Предпросмотр изображения лекции"} className="mt-3 max-h-52 rounded-lg border border-slate-200 object-contain" />}
           </div>
           <label className="mt-3 block text-xs font-semibold text-slate-600">Практическое задание<textarea value={topic.practice ?? ""} onChange={(event) => updateTopic(index, { practice: event.target.value })} rows={4} placeholder="Задание для самостоятельной работы" className={topicFieldClass} /></label>
+          </>}
         </div>)}
       </div>
     </section>
