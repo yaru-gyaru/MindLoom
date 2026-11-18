@@ -32,7 +32,7 @@ export function CourseCard({ course, showSave = false }: { course: CourseEntry; 
       <p className="mt-1 min-h-10 text-sm leading-5 text-slate-400">{course.description}</p>
       {role !== "guest" && <><div className="mt-4 flex items-center justify-between text-sm"><span className="text-slate-400">{course.completed} из {course.topics.length} тем</span><span className="font-bold text-[#eef2ff]">{progress}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#1c2941]"><div className={"h-full rounded-full " + style.bar} style={{ width: progress + "%" }} /></div></>}
     </Link>
-    {showSave && role !== "guest" && <button type="button" onClick={() => { toggleSavedCourse(course.id); setNotice(saved ? "Курс удалён из «Моих курсов»" : "Курс добавлен в «Мои курсы»"); window.setTimeout(() => setNotice(""), 2600); }} aria-label={saved ? "Удалить курс из Моих курсов" : "Добавить курс в Мои курсы"} aria-pressed={saved} className={saveButtonClass}><span aria-hidden="true">{saved ? "✓" : "+"}</span></button>}
+    {showSave && role !== "guest" && <button type="button" onClick={() => { toggleSavedCourse(course.id); setNotice(saved ? "Курс удалён из «Моих курсов»" : "Курс добавлен в «Мои курсы»"); window.setTimeout(() => setNotice(""), 4200); }} aria-label={saved ? "Удалить курс из Моих курсов" : "Добавить курс в Мои курсы"} aria-pressed={saved} className={saveButtonClass}><span aria-hidden="true">{saved ? "✓" : "+"}</span></button>}
     {notice && <div role="status" className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl border border-[#287d8e] bg-[#10182c] px-5 py-3 text-sm font-bold text-[#70e6ff] shadow-[4px_4px_0_#050914]">{notice}</div>}
   </article>;
 }

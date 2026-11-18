@@ -944,6 +944,9 @@ body {
   width: 100%;
   min-height: 52px;
   overflow-x: auto;
+  gap: 12px !important;
+  padding-left: clamp(20px, 5vw, 88px) !important;
+  padding-right: clamp(20px, 5vw, 88px) !important;
   background-color: #080d1d !important;
 }
 
@@ -978,4 +981,21 @@ body {
   text-align: center !important;
   text-align-last: center !important;
   text-wrap: balance;
+}
+
+/* Final layout override: keep navigation below the header and align it with the logo. */
+.site-shell > div > .site-mobile-nav {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  display: flex !important;
+  min-height: 64px !important;
+  margin: 0 !important;
+  padding: 8px clamp(20px, 5vw, 88px) !important;
+  gap: 12px !important;
+  justify-content: flex-start !important;
+  border-bottom: 1px solid #344360 !important;
+  background: #080d1d !important;
 }
