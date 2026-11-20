@@ -49,7 +49,7 @@ function CourseForm({ existing }: { existing?: CourseEntry }) {
     return { ...topic, ...material, lectureBlocks: blocksForTopic(topic, material.lecture) };
   }) ?? [{ title: "", summary: "", minutes: 25, lecture: "", practice: "", lectureBlocks: [{ type: "text", text: "" }] }]);
   const [newCodeLanguage, setNewCodeLanguage] = useState(() => preferredCodeLanguage(existing?.topics));
-  const [expandedTopicIndex, setExpandedTopicIndex] = useState<number | null>(0);
+  const [expandedTopicIndex, setExpandedTopicIndex] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const [topicToReveal, setTopicToReveal] = useState<number | null>(null);
