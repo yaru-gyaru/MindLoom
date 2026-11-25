@@ -73,16 +73,59 @@ export function LessonPage({ courseId, topicNumber }: { courseId: string; topicN
   const answerKey = `mindloom-practice-${encodeURIComponent(courseId)}-${topicNumber}`;
   const [answer, setAnswer] = useState("");
   const [answerLoaded, setAnswerLoaded] = useState(false);
+  const [progressStatus, setProgressStatus] = useState("");
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
-    try { setAnswer(window.localStorage.getItem(answerKey) ?? ""); } catch { setAnswer(""); }
-    setAnswerLoaded(true);
-  }, [answerKey]);
+    let cancelled = false;
+    async function loadProgress() {
+      let localAnswer = "";
+      try {
+        localAnswer = window.localStorage.getItem(answerKey) ?? "";
+        if (!cancelled) setAnswer(localAnswer);
+        const response = await fetch("/api/progress", { cache: "no-store" });
+        if (response.ok) {
+          const progress = await response.json() as { answers?: Record<string, string>; completed?: string[] };
+          if (!cancelled) {
+            const savedAnswer = progress.answers?.[`${courseId}:${topicNumber}`];
+            if (typeof savedAnswer === "string") setAnswer(savedAnswer);
+            if (progress.completed?.includes(`${courseId}:${topicNumber}`) && course && topicIndex >= course.completed) {
+              saveCourse(courseId, { title: course.title, category: course.category, description: course.description, completed: Math.min(topicIndex + 1, course.topics.length), stages: course.stages, topics: course.topics, tags: course.tags });
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) setAnswer(localAnswer);
+      } finally {
+        if (!cancelled) {
+          setAnswerLoaded(true);
+        }
+      }
+    }
+    void loadProgress();
+    return () => { cancelled = true; };
+  }, [answerKey, course, courseId, topicIndex, topicNumber]);
 
   useEffect(() => {
     if (!answerLoaded) return;
     try { window.localStorage.setItem(answerKey, answer); } catch { /* Local notes are optional. */ }
   }, [answer, answerKey, answerLoaded]);
+
+  useEffect(() => {
+    if (!answerLoaded) return;
+    const timer = window.setTimeout(() => {
+      void fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignmentId: `${courseId}:${topicNumber}`, action: "answer", answer }),
+      }).then((response) => {
+        if (response.status === 401) setProgressStatus("Войдите в аккаунт, чтобы сохранить ответ на сервере. Копия остаётся в этом браузере.");
+        else if (!response.ok) setProgressStatus("Не удалось сохранить ответ на сервере. Он пока сохранён в этом браузере.");
+        else setProgressStatus("");
+      }).catch(() => setProgressStatus("Не удалось сохранить ответ на сервере. Он пока сохранён в этом браузере."));
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [answer, answerLoaded, courseId, topicNumber]);
 
   if (!ready) return <div className="flex min-h-screen items-center justify-center bg-[#f5f7fb] text-sm text-slate-500">Открываем урок…</div>;
 
@@ -93,11 +136,26 @@ export function LessonPage({ courseId, topicNumber }: { courseId: string; topicN
   const previousHref = topicIndex > 0 ? `/learn/${encodeURIComponent(courseId)}/${topicNumber - 1}` : undefined;
   const nextHref = topicNumber < course.topics.length && topicNumber <= course.completed ? `/learn/${encodeURIComponent(courseId)}/${topicNumber + 1}` : undefined;
 
-  function completeLesson() {
+  async function completeLesson() {
     if (!course) return;
+    setCompleting(true);
+    setProgressStatus("");
+    try {
+      const response = await fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignmentId: `${courseId}:${topicNumber}`, action: "complete" }),
+      });
+      if (!response.ok) throw new Error("Could not save progress");
+    } catch {
+      setProgressStatus("Не удалось сохранить прогресс. Войдите в аккаунт и проверьте подключение к серверу.");
+      setCompleting(false);
+      return;
+    }
     if (topicIndex === course.completed) {
       saveCourse(courseId, { title: course.title, category: course.category, description: course.description, completed: Math.min(course.completed + 1, course.topics.length), stages: course.stages, topics: course.topics, tags: course.tags });
     }
+    setCompleting(false);
   }
 
   const isPython = track === "python";
@@ -122,7 +180,7 @@ export function LessonPage({ courseId, topicNumber }: { courseId: string; topicN
 
           <article id="practice" className="mt-6 scroll-mt-24 overflow-hidden rounded-[22px] border-2 border-[#493950] bg-[#10182c] shadow-[5px_5px_0_#493950]"><div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#eee7f0] bg-[#17223b] px-6 py-5 sm:px-8"><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-xl bg-[#173b37] text-[#4b853e]"><Icon name="check" size={20} /></span><div><p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#71896b]">Практика</p><h2 className="text-xl font-extrabold">Твоя миссия</h2></div></div><span className="rounded-full bg-[#3b3023] px-3 py-1.5 text-xs font-extrabold text-[#936126]">Награда · 50 XP</span></div><div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)]"><div className="p-6 sm:p-8"><LessonContent content={material.practice} /></div><div className="border-t-2 border-[#eee7f0] bg-[#faf8fc] p-5 sm:p-7 lg:border-l-2 lg:border-t-0"><div className="mb-3 flex items-center justify-between gap-3"><label htmlFor="practice-answer" className="text-sm font-extrabold">{isPython ? "Твой код" : "Твоё решение"}</label><span className="rounded-md bg-[#34233a] px-2 py-1 font-mono text-[10px] font-bold text-[#ffe095]">{isPython ? "PYTHON" : "ЗАМЕТКИ"}</span></div><textarea id="practice-answer" value={answer} onChange={(event) => setAnswer(event.target.value)} rows={12} spellCheck={!isPython} placeholder={isPython ? "# Напиши решение задания здесь\n\ndef main():\n    " : "Запиши ход решения, выводы и вопросы по заданию…"} className={`w-full resize-y rounded-xl border-2 border-[#493950] bg-[#302738] p-4 text-sm leading-6 text-[#f4edf8] outline-none placeholder:text-white/40 focus:border-[#9b76d1] focus:ring-4 focus:ring-[#9b76d1]/15 ${isPython ? "font-mono" : "font-sans"}`} /><p className="mt-2 text-xs leading-5 text-slate-500">Ответ сохраняется в браузере автоматически. Можно вернуться к нему позже.</p></div></div></article>
 
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border-2 border-[#493950] bg-[#fff] p-5 shadow-[4px_4px_0_#493950]"><p className="text-sm font-semibold text-slate-600">{completed ? "Миссия завершена. Отличная работа!" : "Готово? Заверши миссию и открой следующий уровень."}</p><div className="flex flex-wrap gap-2">{!completed && <button type="button" onClick={completeLesson} className="rounded-xl bg-[#7253a1] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#60448a]">Завершить миссию · +50 XP</button>}{nextHref && <Link href={nextHref} className="rounded-xl border-2 border-[#493950] bg-[#3b3023] px-5 py-3 text-sm font-extrabold text-[#68441a] hover:bg-[#ffe7aa]">Следующая миссия →</Link>}</div></div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border-2 border-[#493950] bg-[#fff] p-5 shadow-[4px_4px_0_#493950]"><div><p className="text-sm font-semibold text-slate-600">{completed ? "Миссия завершена. Отличная работа!" : "Готово? Заверши миссию и открой следующий уровень."}</p>{progressStatus && <p role="status" className="mt-2 text-sm text-rose-700">{progressStatus}</p>}</div><div className="flex flex-wrap gap-2">{!completed && <button type="button" disabled={completing} onClick={completeLesson} className="rounded-xl bg-[#7253a1] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#60448a] disabled:opacity-60">{completing ? "Сохраняем…" : "Завершить миссию · +50 XP"}</button>}{nextHref && <Link href={nextHref} className="rounded-xl border-2 border-[#493950] bg-[#3b3023] px-5 py-3 text-sm font-extrabold text-[#68441a] hover:bg-[#ffe7aa]">Следующая миссия →</Link>}</div></div>
         </>}
       </section>
 

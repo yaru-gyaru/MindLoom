@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AppShell, useDemoRole } from "@/components/app-shell";
+import { AppShell, useAuthRole } from "@/components/app-shell";
 import { Icon } from "@/components/icons";
 import { defaultCourses, type CourseTopic } from "@/lib/roadmap-courses";
 import { useClientReady, useCourseCatalog } from "@/lib/local-content";
@@ -96,7 +96,7 @@ export function RoadmapView({ courseId }: { courseId: string }) {
   const ready = useClientReady();
   const entry = catalog.find((item) => item.id === courseId);
   const course = entry ?? defaultCourses.system;
-  const role = useDemoRole();
+  const role = useAuthRole();
   const total = course.topics.length;
   const progress = Math.round(course.completed / total * 100);
   const rows = rowsFor(total);

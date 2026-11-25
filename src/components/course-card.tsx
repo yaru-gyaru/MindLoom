@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/icons";
-import { useDemoRole } from "@/components/app-shell";
+import { useAuthRole } from "@/components/app-shell";
 import { courseHref, toggleSavedCourse, useSavedCourseIds, type CourseEntry } from "@/lib/local-content";
 
 const styles: Record<string, { tile: string; bar: string; mark: string }> = {
@@ -17,7 +17,7 @@ const styles: Record<string, { tile: string; bar: string; mark: string }> = {
 };
 
 export function CourseCard({ course, showSave = false }: { course: CourseEntry; showSave?: boolean }) {
-  const role = useDemoRole();
+  const role = useAuthRole();
   const saved = useSavedCourseIds().includes(course.id);
   const [notice, setNotice] = useState("");
   const style = styles[course.id] ?? { tile: "bg-[#e9f8f0] text-[#47a980]", bar: "bg-[#58bb91]", mark: course.title.slice(0, 2).toUpperCase() };

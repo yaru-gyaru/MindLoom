@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { CourseCard } from "@/components/course-card";
-import { useDemoRole } from "@/components/app-shell";
+import { useAuthRole } from "@/components/app-shell";
 import { useCourseCatalog, useSavedCourseIds } from "@/lib/local-content";
 
 export function HomeCourseCards() {
   const courses = useCourseCatalog();
-  const role = useDemoRole();
+  const role = useAuthRole();
   const savedIds = useSavedCourseIds();
   const relevantCourses = role === "guest"
     ? courses.slice(0, 3)
