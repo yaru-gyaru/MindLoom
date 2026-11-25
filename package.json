@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pglite-server --db=./data/postgres --run \"node node_modules/next/dist/bin/next dev\" --include-database-url",
-    "dev:next": "next dev",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

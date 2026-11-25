@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon, PixelMark } from "./icons";
 
-type Section = "home" | "my-courses" | "catalog" | "roadmap" | "review" | "results" | "admin";
+type Section = "home" | "my-courses" | "catalog" | "roadmap" | "review" | "results" | "profile" | "admin";
 
 const nav = [
   { href: "/", label: "Обзор", icon: "grid", id: "home" },
@@ -22,9 +22,19 @@ type AuthUser = { email: string; displayName: string; role: "user" | "admin" };
 type AuthSnapshot = { loaded: boolean; user: AuthUser | null };
 let authSnapshot: AuthSnapshot = { loaded: false, user: null };
 const authListeners = new Set<() => void>();
+let authRequestId = 0;
 
 function subscribeAuth(onChange: () => void) { authListeners.add(onChange); return () => authListeners.delete(onChange); }
-function updateAuth(snapshot: AuthSnapshot) { authSnapshot = snapshot; authListeners.forEach((listener) => listener()); }
+function updateAuth(snapshot: AuthSnapshot) {
+  authRequestId += 1;
+  authSnapshot = snapshot;
+  authListeners.forEach((listener) => listener());
+}
+function updateAuthFromRequest(requestId: number, snapshot: AuthSnapshot) {
+  if (requestId !== authRequestId) return;
+  authSnapshot = snapshot;
+  authListeners.forEach((listener) => listener());
+}
 function getAuthSnapshot() { return authSnapshot; }
 function useAuthSnapshot() { return useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => ({ loaded: false, user: null })); }
 export function useAuthRole(): DemoRole {
@@ -64,7 +74,13 @@ export function AppShell({ active, children }: { active: Section; children: Reac
     : nav.filter((item) => canViewSection(role, item.id));
 
   useEffect(() => {
-    const refreshAuth = () => { void fetch("/api/auth/me", { cache: "no-store" }).then((response) => response.json()).then((data: { user: AuthUser | null }) => updateAuth({ loaded: true, user: data.user })).catch(() => updateAuth({ loaded: true, user: null })); };
+    const refreshAuth = () => {
+      const requestId = ++authRequestId;
+      void fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" })
+        .then((response) => response.json())
+        .then((data: { user: AuthUser | null }) => updateAuthFromRequest(requestId, { loaded: true, user: data.user }))
+        .catch(() => updateAuthFromRequest(requestId, { loaded: true, user: null }));
+    };
     if (!authSnapshot.loaded) refreshAuth();
     window.addEventListener("mindloom-auth-change", refreshAuth);
     return () => window.removeEventListener("mindloom-auth-change", refreshAuth);
@@ -92,6 +108,7 @@ export function AppShell({ active, children }: { active: Section; children: Reac
                 <Icon name={item.icon} size={19} />{item.label}
               </Link>
             ))}
+            {auth.user && <Link href="/profile" aria-current={active === "profile" ? "page" : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6258f4] ${active === "profile" ? "bg-[#f0efff] text-[#5147d7]" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}><Icon name="more" size={19} />Профиль</Link>}
           </nav>
         </div>
         <div className="mt-auto p-4">
@@ -122,6 +139,7 @@ export function AppShell({ active, children }: { active: Section; children: Reac
         </header>
         <nav aria-label="Мобильная навигация" className="site-mobile-nav flex gap-2 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2 lg:hidden">
           {visibleNav.map((item) => <Link key={item.id} href={item.href} aria-current={active === item.id ? "page" : undefined} className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6258f4] ${active === item.id ? "bg-[#f0efff] text-[#5147d7]" : "text-slate-600"}`}>{item.label}</Link>)}
+          {auth.user && <Link href="/profile" className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6258f4]">Профиль</Link>}
         </nav>
         <div className="site-content mx-auto max-w-[1500px] px-5 py-8 sm:px-8 lg:px-10 lg:py-10">{canViewSection(role, active) ? children : <div className="mx-auto max-w-xl rounded-[24px] border border-slate-200 bg-white p-7 text-center shadow-[0_8px_28px_rgba(29,34,72,0.05)] sm:p-10"><span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#eeecff] text-[#7166f6]"><Icon name="lock" size={23} /></span><h1 className="mt-5 text-2xl font-bold">Раздел недоступен</h1><p className="mt-3 text-sm leading-6 text-slate-600">{active === "admin" ? "Админ-панель доступна только администратору." : "Войдите в аккаунт, чтобы открыть этот раздел."}</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link href={active === "admin" ? "/" : "/login"} className="rounded-xl bg-[#7166f6] px-4 py-2.5 text-sm font-semibold text-white">{active === "admin" ? "На главную" : "Войти"}</Link><Link href="/register" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Создать аккаунт</Link></div></div>}</div>
       </div>
