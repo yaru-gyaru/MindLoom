@@ -36,6 +36,7 @@ yarn-error.log*
 !.env.example
 /data/user-progress.json
 /data/user-progress.json.*.tmp
+/data/postgres/
 
 # vercel
 .vercel

@@ -6,12 +6,12 @@ MindLoom помогает составить план изучения любо�
 
 ## Backend и локальный запуск
 
-1. Запустите PostgreSQL командой `docker compose up -d`.
-2. Скопируйте `.env.example` в `.env.local` и задайте случайный `AUTH_SECRET` длиной не менее 32 байт.
-3. Запустите `npm run dev`. Таблицы `users` и `user_progress` создаются при первом API-запросе.
+1. Для локальной разработки отдельная установка Docker не нужна: `npm run dev` запускает персистентный PostgreSQL-совместимый PGlite и Next.js вместе. Данные базы хранятся в `data/postgres/`.
+2. Скопируйте `.env.example` в `.env.local` и задайте случайный `AUTH_SECRET` длиной не менее 32 байт. `DATABASE_URL` для локального PGlite сервер передаст дочернему процессу.
+3. При первом API-запросе создаются таблицы `users` и `user_progress`.
 4. Создайте аккаунт на `/register`; войдите через `/login`. Практические ответы и завершения сохраняются в PostgreSQL и привязаны к подписанной серверной сессии.
 
-Для назначения администратора зарегистрируйте аккаунт, затем выполните в PostgreSQL: `UPDATE users SET role = 'admin' WHERE email = 'адрес@example.com';`. Роль читается из базы данных, а не из браузера.
+Для обычного PostgreSQL вместо PGlite можно запустить `docker compose up -d`, задать `DATABASE_URL` из `.env.example` и выполнить `npm run dev:next`. Для назначения администратора зарегистрируйте аккаунт, затем выполните в PostgreSQL: `UPDATE users SET role = 'admin' WHERE email = 'адрес@example.com';`. Роль читается из базы данных, а не из браузера.
 
 API: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`, `GET/POST /api/progress`. Для production задайте надёжный `AUTH_SECRET`, защищённый managed PostgreSQL, TLS, резервные копии, подтверждение почты и ограничение частоты запросов. Сброс пароля и почтовая доставка пока не подключены.
 
