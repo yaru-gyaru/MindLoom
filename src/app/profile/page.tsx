@@ -1,13 +1,12 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
 import { getSessionUser } from "@/lib/server/auth";
 
-export default async function ProfilePage() {
+async function ProfileContent() {
   const user = await getSessionUser();
 
-  return (
-    <AppShell active="profile">
-      {!user ? (
+  return !user ? (
         <section className="mx-auto max-w-xl rounded-2xl border border-[#344360] bg-[#10182c] p-8 text-center shadow-[4px_4px_0_#030611]">
           <h1 className="text-2xl font-bold text-[#edf4ff]">Войдите в аккаунт</h1>
           <p className="mt-3 text-[#a7b7d0]">Чтобы посмотреть профиль, сначала войдите.</p>
@@ -31,7 +30,9 @@ export default async function ProfilePage() {
             </dl>
           </section>
         </div>
-      )}
-    </AppShell>
-  );
+      );
+}
+
+export default function ProfilePage() {
+  return <AppShell active="profile"><Suspense fallback={<div className="mx-auto max-w-xl rounded-2xl border border-[#344360] bg-[#10182c] p-6 text-center text-[#a7b7d0]">Загружаем профиль…</div>}><ProfileContent /></Suspense></AppShell>;
 }

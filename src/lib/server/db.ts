@@ -16,6 +16,12 @@ export async function ensureSchema() {
         id uuid PRIMARY KEY,
         email text NOT NULL UNIQUE,
         display_name text NOT NULL,
+        surname text NOT NULL DEFAULT '',
+        bio text NOT NULL DEFAULT '',
+        city text NOT NULL DEFAULT '',
+        website text NOT NULL DEFAULT '',
+        birth_date date,
+        learning_goals text NOT NULL DEFAULT '',
         password_hash text NOT NULL,
         role text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
         created_at timestamptz NOT NULL DEFAULT now(),
@@ -30,6 +36,12 @@ export async function ensureSchema() {
         PRIMARY KEY (user_id, assignment_id)
       );
       CREATE INDEX IF NOT EXISTS user_progress_user_updated_idx ON user_progress(user_id, updated_at DESC);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS surname text NOT NULL DEFAULT '';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bio text NOT NULL DEFAULT '';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS city text NOT NULL DEFAULT '';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS website text NOT NULL DEFAULT '';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date date;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS learning_goals text NOT NULL DEFAULT '';
     `);
   })().catch((error) => { globalForPool.mindloomSchema = undefined; throw error; });
   return globalForPool.mindloomSchema;

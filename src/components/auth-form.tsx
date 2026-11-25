@@ -24,7 +24,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       const data = await response.json() as { error?: string };
       if (!response.ok) throw new Error(data.error || "Не удалось выполнить запрос.");
       window.dispatchEvent(new Event("mindloom-auth-change"));
-      router.push("/");
+      router.push("/profile");
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Сервер временно недоступен.");

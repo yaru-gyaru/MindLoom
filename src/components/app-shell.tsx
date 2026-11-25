@@ -21,6 +21,7 @@ type DemoRole = "user" | "guest" | "admin";
 type AuthUser = { email: string; displayName: string; role: "user" | "admin" };
 type AuthSnapshot = { loaded: boolean; user: AuthUser | null };
 let authSnapshot: AuthSnapshot = { loaded: false, user: null };
+const serverAuthSnapshot: AuthSnapshot = { loaded: false, user: null };
 const authListeners = new Set<() => void>();
 let authRequestId = 0;
 
@@ -36,7 +37,8 @@ function updateAuthFromRequest(requestId: number, snapshot: AuthSnapshot) {
   authListeners.forEach((listener) => listener());
 }
 function getAuthSnapshot() { return authSnapshot; }
-function useAuthSnapshot() { return useSyncExternalStore(subscribeAuth, getAuthSnapshot, () => ({ loaded: false, user: null })); }
+function getServerAuthSnapshot() { return serverAuthSnapshot; }
+function useAuthSnapshot() { return useSyncExternalStore(subscribeAuth, getAuthSnapshot, getServerAuthSnapshot); }
 export function useAuthRole(): DemoRole {
   const auth = useAuthSnapshot();
   return auth.user?.role ?? "guest";
@@ -49,7 +51,9 @@ function canViewSection(role: DemoRole, section: Section) {
 }
 
 export function MemberOnly({ children }: { children: React.ReactNode }) {
-  const role = useAuthRole();
+  const auth = useAuthSnapshot();
+  const role = auth.user?.role ?? "guest";
+  if (!auth.loaded) return <div className="rounded-2xl border border-[#344360] bg-[#10182c] p-5 text-sm text-[#a7b7d0]">Проверяем вход в аккаунт…</div>;
   return role === "guest" ? <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600"><p>Войдите или зарегистрируйтесь, чтобы сохранить прогресс и открыть этот раздел.</p><div className="mt-3 flex gap-3"><Link href="/login" className="font-semibold text-[#6258f4]">Войти</Link><Link href="/register" className="font-semibold text-[#6258f4]">Создать аккаунт</Link></div></div> : children;
 }
 
@@ -141,7 +145,7 @@ export function AppShell({ active, children }: { active: Section; children: Reac
           {visibleNav.map((item) => <Link key={item.id} href={item.href} aria-current={active === item.id ? "page" : undefined} className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6258f4] ${active === item.id ? "bg-[#f0efff] text-[#5147d7]" : "text-slate-600"}`}>{item.label}</Link>)}
           {auth.user && <Link href="/profile" className="shrink-0 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6258f4]">Профиль</Link>}
         </nav>
-        <div className="site-content mx-auto max-w-[1500px] px-5 py-8 sm:px-8 lg:px-10 lg:py-10">{canViewSection(role, active) ? children : <div className="mx-auto max-w-xl rounded-[24px] border border-slate-200 bg-white p-7 text-center shadow-[0_8px_28px_rgba(29,34,72,0.05)] sm:p-10"><span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#eeecff] text-[#7166f6]"><Icon name="lock" size={23} /></span><h1 className="mt-5 text-2xl font-bold">Раздел недоступен</h1><p className="mt-3 text-sm leading-6 text-slate-600">{active === "admin" ? "Админ-панель доступна только администратору." : "Войдите в аккаунт, чтобы открыть этот раздел."}</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link href={active === "admin" ? "/" : "/login"} className="rounded-xl bg-[#7166f6] px-4 py-2.5 text-sm font-semibold text-white">{active === "admin" ? "На главную" : "Войти"}</Link><Link href="/register" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Создать аккаунт</Link></div></div>}</div>
+        <div className="site-content mx-auto max-w-[1500px] px-5 py-8 sm:px-8 lg:px-10 lg:py-10">{!auth.loaded ? <div className="mx-auto max-w-xl rounded-2xl border border-[#344360] bg-[#10182c] p-6 text-center text-[#a7b7d0]">Проверяем вход в аккаунт…</div> : canViewSection(role, active) ? children : <div className="mx-auto max-w-xl rounded-[24px] border border-slate-200 bg-white p-7 text-center shadow-[0_8px_28px_rgba(29,34,72,0.05)] sm:p-10"><span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[#eeecff] text-[#7166f6]"><Icon name="lock" size={23} /></span><h1 className="mt-5 text-2xl font-bold">Раздел недоступен</h1><p className="mt-3 text-sm leading-6 text-slate-600">{active === "admin" ? "Админ-панель доступна только администратору." : "Войдите в аккаунт, чтобы открыть этот раздел."}</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Link href={active === "admin" ? "/" : "/login"} className="rounded-xl bg-[#7166f6] px-4 py-2.5 text-sm font-semibold text-white">{active === "admin" ? "На главную" : "Войти"}</Link><Link href="/register" className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Создать аккаунт</Link></div></div>}</div>
       </div>
     </div>
   );
