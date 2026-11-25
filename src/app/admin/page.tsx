@@ -1,36 +1,85 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
-import { AdminCourseCatalog } from "@/components/admin-course-catalog";
-import { Icon } from "@/components/icons";
+import { ensureSchema, getPool } from "@/lib/server/db";
+import { getSessionUser } from "@/lib/server/auth";
 
-const stats = [
-  { label: "Пользователи", value: "1 284", change: "+12% за месяц", icon: "grid" as const, tint: "bg-[#eeecff] text-[#7166f6]" },
-  { label: "Сгенерировано карт", value: "3 672", change: "+186 за неделю", icon: "map" as const, tint: "bg-[#e5f3fb] text-[#55a5cf]" },
-  { label: "Генерации сегодня", value: "248", change: "234 завершены", icon: "sparkles" as const, tint: "bg-[#e6f7ed] text-[#45ae7e]" },
-  { label: "Задачи в очереди", value: "14", change: "Ожидают обработки", icon: "clock" as const, tint: "bg-[#fff2e5] text-[#e89d5e]" },
-];
+type UserRow = {
+  id: string;
+  display_name: string;
+  surname: string;
+  email: string;
+  role: "user" | "admin";
+  created_at: Date;
+  saved_answers: number;
+  completed_answers: number;
+};
 
-const jobs = [
-  { topic: "System Design & Distributed Systems", user: "Пользователь 024", date: "Сегодня, 14:32", status: "Готово", tone: "bg-[#e6f7ed] text-[#369c70]" },
-  { topic: "Основы машинного обучения", user: "Пользователь 118", date: "Сегодня, 14:29", status: "Готово", tone: "bg-[#e6f7ed] text-[#369c70]" },
-  { topic: "История архитектуры", user: "Пользователь 086", date: "Сегодня, 14:25", status: "В работе", tone: "bg-[#eeecff] text-[#7166f6]" },
-  { topic: "Python Backend", user: "Пользователь 051", date: "Сегодня, 14:18", status: "В очереди", tone: "bg-[#fff3e7] text-[#d78c4b]" },
-];
+type ActivityRow = {
+  assignment_id: string;
+  submissions: number;
+  completed: number;
+  last_activity: Date;
+};
+
+const dateTime = new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" });
+
+async function AdminDashboard() {
+  const user = await getSessionUser();
+  if (!user || user.role !== "admin") {
+    return <section className="mx-auto max-w-xl rounded-2xl border border-[#344360] bg-[#10182c] p-8 text-center shadow-[4px_4px_0_#030611]"><h1 className="text-2xl font-bold text-[#edf4ff]">Доступ только для администратора</h1><p className="mt-3 text-[#a7b7d0]">Войдите в аккаунт с ролью администратора, чтобы открыть панель.</p><Link href="/" className="mt-5 inline-flex rounded-xl border border-[#344360] px-5 py-3 font-semibold text-[#70e6ff]">На главную</Link></section>;
+  }
+
+  await ensureSchema();
+  const pool = getPool();
+  const [usersResult, activityResult, summaryResult, databaseResult] = await Promise.all([
+    pool.query<UserRow>(`SELECT u.id, u.display_name, u.surname, u.email, u.role, u.created_at,
+        count(p.assignment_id)::int AS saved_answers,
+        count(p.completed_at)::int AS completed_answers
+      FROM users u LEFT JOIN user_progress p ON p.user_id = u.id
+      GROUP BY u.id ORDER BY u.created_at DESC LIMIT 20`),
+    pool.query<ActivityRow>(`SELECT assignment_id, count(*)::int AS submissions,
+        count(completed_at)::int AS completed, max(updated_at) AS last_activity
+      FROM user_progress GROUP BY assignment_id ORDER BY max(updated_at) DESC LIMIT 12`),
+    pool.query<{ users: number; joined_today: number; answers: number; completed: number }>(`SELECT
+        (SELECT count(*)::int FROM users) AS users,
+        (SELECT count(*)::int FROM users WHERE created_at >= date_trunc('day', now())) AS joined_today,
+        (SELECT count(*)::int FROM user_progress) AS answers,
+        (SELECT count(*)::int FROM user_progress WHERE completed_at IS NOT NULL) AS completed`),
+    pool.query<{ name: string }>("SELECT current_database() AS name"),
+  ]);
+  const summary = summaryResult.rows[0];
+  const metrics = [
+    { label: "Аккаунты", value: summary.users, detail: `Новых сегодня: ${summary.joined_today}`, color: "text-[#70e6ff]" },
+    { label: "Ответы на практику", value: summary.answers, detail: "Сохранены в базе", color: "text-[#b8a7ff]" },
+    { label: "Завершённые задания", value: summary.completed, detail: "По отметкам пользователей", color: "text-[#69ddb0]" },
+    { label: "База данных", value: databaseResult.rows[0]?.name ?? "—", detail: "PostgreSQL · подключена", color: "text-[#ffd36d]" },
+  ];
+
+  return (
+    <div className="mx-auto max-w-6xl">
+      <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#a99aff]">Управление платформой</p><h1 className="mt-2 text-3xl font-bold text-[#edf4ff] sm:text-4xl">Админ-панель</h1><p className="mt-2 text-[#a7b7d0]">Данные аккаунтов и практических заданий из PostgreSQL.</p></div>
+        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-950/30 px-4 py-2 text-sm font-semibold text-emerald-200"><span className="size-2 rounded-full bg-emerald-300" />Подключена: {databaseResult.rows[0]?.name}</span>
+      </header>
+
+      <section aria-label="Статистика базы данных" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric) => <article key={metric.label} className="rounded-2xl border border-[#344360] bg-[#10182c] p-5 shadow-[4px_4px_0_#030611]"><p className="text-sm font-medium text-[#a7b7d0]">{metric.label}</p><p className={`mt-3 break-words text-3xl font-bold ${metric.color}`}>{metric.value}</p><p className="mt-2 text-xs text-[#8091aa]">{metric.detail}</p></article>)}
+      </section>
+
+      <section className="mt-7 overflow-hidden rounded-2xl border border-[#344360] bg-[#10182c] shadow-[4px_4px_0_#030611]">
+        <div className="border-b border-[#344360] p-5 sm:px-6"><h2 className="text-xl font-semibold text-[#edf4ff]">Пользователи</h2><p className="mt-1 text-sm text-[#a7b7d0]">Последние 20 аккаунтов из таблицы users.</p></div>
+        {usersResult.rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-[#17223b] text-xs uppercase tracking-wider text-[#a7b7d0]"><tr><th className="px-5 py-3 font-semibold">Имя</th><th className="px-5 py-3 font-semibold">Почта</th><th className="px-5 py-3 font-semibold">Роль</th><th className="px-5 py-3 font-semibold">Регистрация</th><th className="px-5 py-3 font-semibold">Ответы</th><th className="px-5 py-3 font-semibold">Завершено</th></tr></thead><tbody className="divide-y divide-[#263550]">{usersResult.rows.map((account) => <tr key={account.id}><td className="px-5 py-4 font-semibold text-[#edf4ff]">{account.display_name}{account.surname ? ` ${account.surname}` : ""}</td><td className="px-5 py-4 text-[#a7b7d0]">{account.email}</td><td className="px-5 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${account.role === "admin" ? "bg-[#332c50] text-[#c8baff]" : "bg-[#183443] text-[#8fe7f5]"}`}>{account.role === "admin" ? "Администратор" : "Пользователь"}</span></td><td className="px-5 py-4 text-[#a7b7d0]">{dateTime.format(new Date(account.created_at))}</td><td className="px-5 py-4 text-[#edf4ff]">{account.saved_answers}</td><td className="px-5 py-4 text-[#edf4ff]">{account.completed_answers}</td></tr>)}</tbody></table></div> : <p className="p-6 text-sm text-[#a7b7d0]">Пользователей пока нет.</p>}
+      </section>
+
+      <section className="mt-6 overflow-hidden rounded-2xl border border-[#344360] bg-[#10182c] shadow-[4px_4px_0_#030611]">
+        <div className="border-b border-[#344360] p-5 sm:px-6"><h2 className="text-xl font-semibold text-[#edf4ff]">Практическая активность</h2><p className="mt-1 text-sm text-[#a7b7d0]">Сводка по сохранённым ответам из таблицы user_progress.</p></div>
+        {activityResult.rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="bg-[#17223b] text-xs uppercase tracking-wider text-[#a7b7d0]"><tr><th className="px-5 py-3 font-semibold">Задание</th><th className="px-5 py-3 font-semibold">Ответов</th><th className="px-5 py-3 font-semibold">Завершено</th><th className="px-5 py-3 font-semibold">Последнее изменение</th></tr></thead><tbody className="divide-y divide-[#263550]">{activityResult.rows.map((activity) => <tr key={activity.assignment_id}><td className="px-5 py-4 font-semibold text-[#edf4ff]">{activity.assignment_id}</td><td className="px-5 py-4 text-[#a7b7d0]">{activity.submissions}</td><td className="px-5 py-4 text-[#a7b7d0]">{activity.completed}</td><td className="px-5 py-4 text-[#a7b7d0]">{dateTime.format(new Date(activity.last_activity))}</td></tr>)}</tbody></table></div> : <p className="p-6 text-sm text-[#a7b7d0]">Сохранённых ответов пока нет.</p>}
+      </section>
+    </div>
+  );
+}
 
 export default function AdminPage() {
-  return <AppShell active="admin">
-    <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#655f83]">Управление платформой</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.045em] sm:text-4xl">Административная панель</h1><p className="mt-2 text-base leading-7 text-slate-600">Курсы, пользователи, генерации и состояние сервисов в одном месте.</p></div><span className="rounded-full bg-[#eeecff] px-4 py-2 text-sm font-semibold text-[#7166f6]">UI-прототип · нет подключения к серверу</span></div>
-
-    <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">{stats.map((item) => <div key={item.label} className="rounded-[20px] border border-slate-200/80 bg-white p-5 shadow-[0_4px_20px_rgba(29,34,72,0.03)]"><div className="flex items-center justify-between"><span className={`flex size-10 items-center justify-center rounded-xl ${item.tint}`}><Icon name={item.icon} size={20} /></span><Icon name="more" size={17} className="text-slate-300" /></div><p className="mt-6 text-3xl font-bold tracking-[-0.04em]">{item.value}</p><p className="mt-1 text-sm font-semibold text-slate-600">{item.label}</p><p className="mt-3 text-sm text-slate-500">{item.change}</p></div>)}</div>
-
-    <AdminCourseCatalog />
-
-
-    <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
-      <div className="space-y-5"><section className="rounded-[22px] border border-slate-200/80 bg-white p-6 sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-base font-bold">Генерации за неделю</h2><p className="mt-1 text-sm text-slate-500">Объём задач на создание карт знаний</p></div><span className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500">Последние 7 дней</span></div><div className="mt-8 flex h-44 items-end justify-between gap-3 border-b border-slate-100 pb-0">{[45, 58, 49, 76, 64, 91, 72].map((height, index) => <div key={index} className="flex h-full flex-1 flex-col justify-end gap-2"><div className={`w-full rounded-t-lg ${index === 5 ? "bg-[#7166f6]" : "bg-[#e2dfff]"}`} style={{ height: `${height}%` }} /></div>)}</div><div className="mt-3 grid grid-cols-7 text-center text-sm text-slate-500">{["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => <span key={day}>{day}</span>)}</div></section>
-      <section className="overflow-hidden rounded-[22px] border border-slate-200/80 bg-white"><div className="flex items-center justify-between px-6 py-5"><div><h2 className="text-base font-bold">Последние задачи</h2><p className="mt-1 text-sm text-slate-500">Демонстрация очереди генерации</p></div><span className="text-sm font-semibold text-[#7166f6]">Все задачи</span></div><div className="overflow-x-auto"><table className="w-full min-w-[610px] text-left text-sm"><thead className="bg-[#f8f9fc] text-sm uppercase tracking-[0.1em] text-slate-500"><tr><th className="px-6 py-3 font-semibold">Тема карты</th><th className="px-4 py-3 font-semibold">Пользователь</th><th className="px-4 py-3 font-semibold">Время</th><th className="px-6 py-3 font-semibold">Статус</th></tr></thead><tbody className="divide-y divide-slate-100">{jobs.map((job) => <tr key={job.topic}><td className="px-6 py-4 font-semibold text-slate-700">{job.topic}</td><td className="px-4 py-4 text-slate-500">{job.user}</td><td className="px-4 py-4 text-slate-500">{job.date}</td><td className="px-6 py-4"><span className={`rounded-full px-2.5 py-1 text-sm font-semibold ${job.tone}`}>{job.status}</span></td></tr>)}</tbody></table></div></section></div>
-
-      <aside className="space-y-5"><section className="rounded-[22px] border border-slate-200/80 bg-white p-6"><div className="flex items-center justify-between"><h2 className="text-sm font-bold">Состояние сервисов</h2><span className="size-2 rounded-full bg-[#54bd89]" /></div><p className="mt-1 text-sm text-slate-500">Пример будущего мониторинга</p><div className="mt-6 space-y-4">{["FastAPI", "PostgreSQL", "Redis / очередь", "AI worker"].map((service) => <div key={service} className="flex items-center justify-between"><div className="flex items-center gap-2.5"><span className="size-2 rounded-full bg-[#54bd89]" /><span className="text-sm font-medium text-slate-600">{service}</span></div><span className="text-sm font-semibold text-[#43a879]">Работает*</span></div>)}</div><p className="mt-5 border-t border-slate-100 pt-4 text-sm leading-5 text-slate-500">* Показатели вымышлены: настоящие сервисы не подключены.</p></section><section className="rounded-[22px] border border-slate-200/80 bg-white p-6"><h2 className="text-sm font-bold">Проверка качества графов</h2><p className="mt-1 text-sm text-slate-500">Как могла бы выглядеть сводка</p><div className="mt-5 space-y-4"><div className="flex items-center justify-between text-sm"><span className="text-slate-500">Без циклов</span><strong>99.8%</strong></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full w-[99.8%] rounded-full bg-[#54bd89]" /></div><div className="flex items-center justify-between text-sm"><span className="text-slate-500">Проверенные ссылки</span><strong>96.4%</strong></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full w-[96.4%] rounded-full bg-[#7166f6]" /></div></div></section><div className="rounded-[20px] bg-[#1d2348] p-5 text-white"><div className="flex items-center gap-2 text-[#b8b1ff]"><Icon name="info" size={17} /><p className="text-sm font-bold">Режим демонстрации</p></div><p className="mt-2 text-sm leading-5 text-[#c4c9df]">Данные на этой странице вымышлены. Управление пользователями, задачами и сервисами появится только вместе с backend.</p><Link href="/" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-white">На сайт <Icon name="arrow" size={14} /></Link></div></aside>
-    </div>
-  </AppShell>;
+  return <AppShell active="admin"><Suspense fallback={<div className="rounded-2xl border border-[#344360] bg-[#10182c] p-6 text-[#a7b7d0]">Загружаем данные админ-панели…</div>}><AdminDashboard /></Suspense></AppShell>;
 }
